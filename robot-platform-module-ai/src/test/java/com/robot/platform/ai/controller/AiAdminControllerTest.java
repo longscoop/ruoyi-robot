@@ -36,7 +36,7 @@ class AiAdminControllerTest {
                 .id(7L).tenantId(1L).name("Qwen").code("qwen").providerType("QWEN")
                 .baseUrl("https://example.invalid").apiKeyCiphertext("ciphertext").status("ENABLED").build()));
 
-        var response = controller.list().getData().getFirst();
+        var response = controller.list().getData().get(0);
 
         assertThat(response.apiKeyConfigured()).isTrue();
         assertThat(AiModelProviderAdminController.ProviderRespVO.class.getRecordComponents())
