@@ -1,0 +1,19 @@
+name: TDD Realtime Agent Task 1
+
+on:
+  push:
+    branches:
+      - tdd/realtime-agent-task-1
+
+jobs:
+  red:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      - name: Run Task 1 smoke test
+        run: mvn -pl robot-platform-module-ai -am -Dtest=AiModuleSmokeTest test
