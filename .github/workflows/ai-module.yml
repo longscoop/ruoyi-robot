@@ -1,0 +1,35 @@
+name: AI Module
+
+on:
+  push:
+    paths:
+      - 'robot-platform-module-ai/**'
+      - 'robot-platform-server/pom.xml'
+      - 'pom.xml'
+      - 'sql/mysql/ai-platform.sql'
+      - 'docker-compose.yml'
+      - '.github/workflows/ai-module.yml'
+  pull_request:
+    paths:
+      - 'robot-platform-module-ai/**'
+      - 'robot-platform-server/pom.xml'
+      - 'pom.xml'
+      - 'sql/mysql/ai-platform.sql'
+      - 'docker-compose.yml'
+      - '.github/workflows/ai-module.yml'
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      - name: Test AI module
+        run: mvn -B -pl robot-platform-module-ai -am test
+      - name: Package server
+        run: mvn -B -pl robot-platform-server -am -DskipTests package
