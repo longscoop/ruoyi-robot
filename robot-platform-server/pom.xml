@@ -46,6 +46,11 @@
             <artifactId>robot-platform-module-robot</artifactId>
         </dependency>
         <dependency>
+            <groupId>com.robot.platform</groupId>
+            <artifactId>robot-platform-module-ai</artifactId>
+            <version>${revision}</version>
+        </dependency>
+        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-testcontainers</artifactId>
             <scope>test</scope>
@@ -150,13 +155,6 @@
 <!--            <version>${revision}</version>-->
 <!--        </dependency>-->
 
-        <!-- AI 大模型相关模块。默认注释，保证编译速度 -->
-<!--        <dependency>-->
-<!--            <groupId>com.robot.platform</groupId>-->
-<!--            <artifactId>robot-platform-module-ai</artifactId>-->
-<!--            <version>${revision}</version>-->
-<!--        </dependency>-->
-
         <!-- IoT 物联网相关模块。默认注释，保证编译速度 -->
 <!--        <dependency>-->
 <!--            <groupId>com.robot.platform</groupId>-->
@@ -229,10 +227,8 @@
                 </includes>
             </testResource>
         </testResources>
-        <!-- 设置构建的 jar 包名 -->
         <finalName>${project.artifactId}</finalName>
         <plugins>
-            <!-- 打包 -->
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
@@ -240,7 +236,7 @@
                 <executions>
                     <execution>
                         <goals>
-                            <goal>repackage</goal> <!-- 将引入的 jar 打入其中 -->
+                            <goal>repackage</goal>
                         </goals>
                     </execution>
                 </executions>
