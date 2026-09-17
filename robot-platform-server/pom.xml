@@ -224,6 +224,7 @@
                     <include>ruoyi-vue-pro.sql</include>
                     <include>quartz.sql</include>
                     <include>robot-platform.sql</include>
+                    <include>ai-platform.sql</include>
                 </includes>
             </testResource>
         </testResources>
