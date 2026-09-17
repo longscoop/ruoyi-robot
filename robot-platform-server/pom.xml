@@ -46,6 +46,11 @@
             <artifactId>robot-platform-module-robot</artifactId>
         </dependency>
         <dependency>
+            <groupId>com.robot.platform</groupId>
+            <artifactId>robot-platform-module-ai</artifactId>
+            <version>${revision}</version>
+        </dependency>
+        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-testcontainers</artifactId>
             <scope>test</scope>
@@ -147,13 +152,6 @@
 <!--        <dependency>-->
 <!--            <groupId>com.robot.platform</groupId>-->
 <!--            <artifactId>robot-platform-module-erp</artifactId>-->
-<!--            <version>${revision}</version>-->
-<!--        </dependency>-->
-
-        <!-- AI 大模型相关模块。默认注释，保证编译速度 -->
-<!--        <dependency>-->
-<!--            <groupId>com.robot.platform</groupId>-->
-<!--            <artifactId>robot-platform-module-ai</artifactId>-->
 <!--            <version>${revision}</version>-->
 <!--        </dependency>-->
 
