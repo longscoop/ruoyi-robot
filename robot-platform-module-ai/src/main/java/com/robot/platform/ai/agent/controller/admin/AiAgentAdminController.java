@@ -64,11 +64,9 @@ public class AiAgentAdminController {
 
     @GetMapping("/{agentId}/robots")
     @PreAuthorize("@ss.hasPermission('ai:agent:query')")
-    public CommonResult<List<AgentRobotRespVO>> listRobots(@PathVariable long agentId, @RequestParam long robotId) {
+    public CommonResult<List<AgentRobotRespVO>> listRobots(@PathVariable long agentId) {
         long tenantId = TenantContextHolder.getRequiredTenantId();
-        agentService.get(tenantId, agentId);
-        return success(bindingService.listByRobot(tenantId, robotId).stream()
-                .filter(row -> row.getAgentId().equals(agentId))
+        return success(bindingService.listByAgent(tenantId, agentId).stream()
                 .map(AiAgentAdminController::toBindingResp).toList());
     }
 
