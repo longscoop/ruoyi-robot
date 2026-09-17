@@ -7,6 +7,7 @@ import java.util.List;
 public interface AiModelProviderService {
     long create(CreateProviderCommand command);
     void update(UpdateProviderCommand command);
+    void delete(long tenantId, long id);
     AiModelProviderDO get(long tenantId, long id);
     List<AiModelProviderDO> list(long tenantId);
     ResolvedProviderCredential resolveCredential(long tenantId, long id);
