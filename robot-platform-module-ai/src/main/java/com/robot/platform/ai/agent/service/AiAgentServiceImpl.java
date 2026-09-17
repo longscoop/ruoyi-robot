@@ -81,6 +81,14 @@ public class AiAgentServiceImpl implements AiAgentService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void delete(long tenantId, long id) {
+        requireCurrentTenant(tenantId);
+        AiAgentDO row = requireAgent(tenantId, id);
+        mapper.deleteById(row.getId());
+    }
+
+    @Override
     public AiAgentDO get(long tenantId, long id) {
         requireCurrentTenant(tenantId);
         return requireAgent(tenantId, id);
