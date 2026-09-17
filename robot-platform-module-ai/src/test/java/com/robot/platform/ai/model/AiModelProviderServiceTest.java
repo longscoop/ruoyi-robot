@@ -67,6 +67,19 @@ class AiModelProviderServiceTest {
     }
 
     @Test
+    void resolvedCredentialNeverPrintsPlaintextSecret() {
+        AiModelProviderDO row = AiModelProviderDO.builder().id(7L).tenantId(1L).providerType("QWEN")
+                .baseUrl("https://dashscope.aliyuncs.com").apiKeyCiphertext("ciphertext").build();
+        when(mapper.selectByIdAndTenantId(7L, 1L)).thenReturn(row);
+        when(cipher.decrypt("ciphertext")).thenReturn("plain-key");
+
+        var resolved = service.resolveCredential(1L, 7L);
+
+        assertThat(resolved.apiKey()).isEqualTo("plain-key");
+        assertThat(resolved.toString()).doesNotContain("plain-key").contains("<redacted>");
+    }
+
+    @Test
     void rejectsTenantMismatchBeforeMutation() {
         TenantContextHolder.setTenantId(2L);
 
