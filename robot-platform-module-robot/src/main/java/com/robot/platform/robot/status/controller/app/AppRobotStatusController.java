@@ -1,7 +1,7 @@
 package com.robot.platform.robot.status.controller.app;
 
-import cn.iocoder.yudao.framework.common.pojo.CommonResult;
-import cn.iocoder.yudao.framework.security.core.util.SecurityFrameworkUtils;
+import com.robot.platform.framework.common.pojo.CommonResult;
+import com.robot.platform.framework.security.core.util.SecurityFrameworkUtils;
 import com.robot.platform.member.binding.service.MemberRobotAccessService;
 import com.robot.platform.security.ApiAudience;
 import com.robot.platform.security.RobotAuthenticatedPrincipal;
@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import static cn.iocoder.yudao.framework.common.pojo.CommonResult.success;
+import static com.robot.platform.framework.common.pojo.CommonResult.success;
 
 /** Member access is checked before even reading the Redis projection. */
 @RestController @RequestMapping("/app-api/robots") @RequiredArgsConstructor

@@ -1,6 +1,6 @@
 package com.robot.platform.device.product.enums;
 
-import cn.iocoder.yudao.framework.common.core.ArrayValuable;
+import com.robot.platform.framework.common.core.ArrayValuable;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 

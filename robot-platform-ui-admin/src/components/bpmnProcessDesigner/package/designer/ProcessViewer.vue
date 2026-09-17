@@ -324,7 +324,7 @@ const importXML = async (xml: string) => {
       // 高亮流程
       setProcessStatus(props.view)
       // 启动 ResizeObserver，等待容器可见且有尺寸时自动居中
-      // 对应 https://github.com/yudaocode/yudao-ui-admin-vue3/pull/221 场景
+      // 对应上游 pull request 221 场景；来源见固定版本的溯源记录。
       if (bpmnViewer.value) {
         await nextTick()
         startResizeObserver()

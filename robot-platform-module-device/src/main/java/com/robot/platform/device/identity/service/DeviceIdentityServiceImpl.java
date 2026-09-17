@@ -6,7 +6,7 @@ import com.robot.platform.device.device.enums.DeviceLifecycle;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import static cn.iocoder.yudao.framework.common.exception.util.ServiceExceptionUtil.exception;
+import static com.robot.platform.framework.common.exception.util.ServiceExceptionUtil.exception;
 import static com.robot.platform.device.device.enums.DeviceErrorCodeConstants.DEVICE_NOT_EXISTS;
 
 @Service

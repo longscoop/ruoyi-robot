@@ -1,7 +1,7 @@
 package com.robot.platform.security;
 
-import cn.iocoder.yudao.framework.common.enums.UserTypeEnum;
-import cn.iocoder.yudao.framework.security.core.LoginUser;
+import com.robot.platform.framework.common.enums.UserTypeEnum;
+import com.robot.platform.framework.security.core.LoginUser;
 import lombok.Getter;
 import lombok.ToString;
 

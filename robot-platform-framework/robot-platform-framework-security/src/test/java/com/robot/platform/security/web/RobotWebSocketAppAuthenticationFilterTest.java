@@ -1,7 +1,7 @@
 package com.robot.platform.security.web;
 
-import cn.iocoder.yudao.framework.security.config.SecurityProperties;
-import cn.iocoder.yudao.framework.security.core.util.SecurityFrameworkUtils;
+import com.robot.platform.framework.security.config.SecurityProperties;
+import com.robot.platform.framework.security.core.util.SecurityFrameworkUtils;
 import com.robot.platform.security.ApiAudience;
 import com.robot.platform.security.SubjectType;
 import com.robot.platform.security.session.RobotSession;

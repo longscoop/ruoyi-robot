@@ -1,6 +1,6 @@
 package com.robot.platform.integration;
 
-import cn.iocoder.yudao.framework.tenant.core.util.TenantUtils;
+import com.robot.platform.framework.tenant.core.util.TenantUtils;
 import com.robot.platform.device.mqtt.service.DeviceMqttIdentity;
 import com.robot.platform.mqtt.MessageSource;
 import com.robot.platform.mqtt.MessageType;
@@ -21,7 +21,7 @@ import com.robot.platform.robot.realtime.model.TenantRobotRealtimeEvent;
 import com.robot.platform.robot.realtime.outbox.RobotRealtimeEventOutboxService;
 import com.robot.platform.robot.realtime.outbox.dal.mysql.RobotRealtimeEventOutboxMapper;
 import com.robot.platform.robot.status.service.RobotOfflineTransitionService;
-import cn.iocoder.yudao.framework.websocket.core.sender.WebSocketMessageSender;
+import com.robot.platform.framework.websocket.core.sender.WebSocketMessageSender;
 import com.robot.platform.server.RobotPlatformApplication;
 import org.junit.jupiter.api.Test;
 import org.mybatis.spring.annotation.MapperScan;

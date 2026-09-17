@@ -1,13 +1,13 @@
 package com.robot.platform.integration;
 
-import cn.iocoder.yudao.framework.tenant.core.context.TenantContextHolder;
-import cn.iocoder.yudao.framework.mq.redis.core.RedisMQTemplate;
-import cn.iocoder.yudao.framework.websocket.core.sender.local.LocalWebSocketMessageSender;
-import cn.iocoder.yudao.framework.websocket.core.sender.redis.RedisWebSocketMessage;
-import cn.iocoder.yudao.framework.websocket.core.sender.redis.RedisWebSocketMessageConsumer;
-import cn.iocoder.yudao.framework.websocket.core.sender.redis.RedisWebSocketMessageSender;
-import cn.iocoder.yudao.framework.websocket.core.session.WebSocketSessionManagerImpl;
-import cn.iocoder.yudao.framework.websocket.core.util.WebSocketFrameworkUtils;
+import com.robot.platform.framework.tenant.core.context.TenantContextHolder;
+import com.robot.platform.framework.mq.redis.core.RedisMQTemplate;
+import com.robot.platform.framework.websocket.core.sender.local.LocalWebSocketMessageSender;
+import com.robot.platform.framework.websocket.core.sender.redis.RedisWebSocketMessage;
+import com.robot.platform.framework.websocket.core.sender.redis.RedisWebSocketMessageConsumer;
+import com.robot.platform.framework.websocket.core.sender.redis.RedisWebSocketMessageSender;
+import com.robot.platform.framework.websocket.core.session.WebSocketSessionManagerImpl;
+import com.robot.platform.framework.websocket.core.util.WebSocketFrameworkUtils;
 import com.robot.platform.security.ApiAudience;
 import com.robot.platform.security.RobotAuthenticatedPrincipal;
 import com.robot.platform.security.SubjectType;
@@ -48,7 +48,7 @@ class RobotWebSocketTenantIsolationIT {
         RedisWebSocketMessageSender sender = new RedisWebSocketMessageSender(new WebSocketSessionManagerImpl(), redis);
         TenantContextHolder.setTenantId(20L);
 
-        sender.send(cn.iocoder.yudao.framework.common.enums.UserTypeEnum.ADMIN.getValue(),
+        sender.send(com.robot.platform.framework.common.enums.UserTypeEnum.ADMIN.getValue(),
                 "ROBOT_STATUS_CHANGED", "{}");
 
         org.mockito.ArgumentCaptor<RedisWebSocketMessage> message = org.mockito.ArgumentCaptor.forClass(RedisWebSocketMessage.class);

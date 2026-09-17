@@ -1,6 +1,6 @@
 package com.robot.platform.security.web;
 
-import cn.iocoder.yudao.framework.security.config.SecurityProperties;
+import com.robot.platform.framework.security.config.SecurityProperties;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;

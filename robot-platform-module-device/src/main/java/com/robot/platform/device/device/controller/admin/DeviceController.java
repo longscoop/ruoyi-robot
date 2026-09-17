@@ -1,6 +1,6 @@
 package com.robot.platform.device.device.controller.admin;
 
-import cn.iocoder.yudao.framework.common.pojo.CommonResult;
+import com.robot.platform.framework.common.pojo.CommonResult;
 import com.robot.platform.device.device.controller.admin.vo.*;
 import com.robot.platform.device.device.convert.DeviceConvert;
 import com.robot.platform.device.device.enums.DeviceLifecycle;
@@ -13,7 +13,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
-import static cn.iocoder.yudao.framework.common.pojo.CommonResult.success;
+import static com.robot.platform.framework.common.pojo.CommonResult.success;
 
 @Tag(name = "管理后台 - 设备") @RestController @RequestMapping("/admin-api/device/devices") @Validated @RequiredArgsConstructor
 public class DeviceController {

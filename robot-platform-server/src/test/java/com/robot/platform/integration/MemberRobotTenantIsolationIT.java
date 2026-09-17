@@ -1,7 +1,7 @@
 package com.robot.platform.integration;
 
-import cn.iocoder.yudao.framework.common.exception.ServiceException;
-import cn.iocoder.yudao.framework.tenant.core.util.TenantUtils;
+import com.robot.platform.framework.common.exception.ServiceException;
+import com.robot.platform.framework.tenant.core.util.TenantUtils;
 import com.robot.platform.member.binding.dal.dataobject.MemberRobotBindingDO;
 import com.robot.platform.member.binding.dal.mysql.MemberRobotBindingMapper;
 import com.robot.platform.member.binding.service.MemberRobotAccessService;

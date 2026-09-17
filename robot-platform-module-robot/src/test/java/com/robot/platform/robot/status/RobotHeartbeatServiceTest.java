@@ -37,7 +37,7 @@ class RobotHeartbeatServiceTest {
     private final RobotHeartbeatService service = new RobotHeartbeatServiceImpl(robots, inbox, statuses, clock,
             Duration.ofMinutes(10), Duration.ofMinutes(1));
 
-    @AfterEach void clear() { cn.iocoder.yudao.framework.tenant.core.context.TenantContextHolder.clear(); }
+    @AfterEach void clear() { com.robot.platform.framework.tenant.core.context.TenantContextHolder.clear(); }
     @BeforeEach void allowSnapshotPersistence() {
         when(robots.updateHeartbeatSnapshotForLockedRobot(anyLong(), anyLong(), anyString(), anyString(), anyInt(),
                 anyString(), nullable(String.class), nullable(String.class), any(LocalDateTime.class))).thenReturn(1);
@@ -58,7 +58,7 @@ class RobotHeartbeatServiceTest {
                 && status.onlineStatus().name().equals("ONLINE")), eq(Duration.ofMinutes(10)));
         verify(robots).updateHeartbeatSnapshotForLockedRobot(eq(10L), eq(7L), eq("ONLINE"), eq("IDLE"), eq(72),
                 eq("2001:db8::1"), eq("M-1"), eq("1.0"), eq(LocalDateTime.ofInstant(clock.instant(), ZoneOffset.UTC)));
-        assertThat(cn.iocoder.yudao.framework.tenant.core.context.TenantContextHolder.getTenantId()).isNull();
+        assertThat(com.robot.platform.framework.tenant.core.context.TenantContextHolder.getTenantId()).isNull();
     }
 
     @Test
@@ -146,15 +146,15 @@ class RobotHeartbeatServiceTest {
 
     @Test
     void heartbeatRestoresPreexistingWorkerTenantContext() {
-        cn.iocoder.yudao.framework.tenant.core.context.TenantContextHolder.setTenantId(99L);
-        cn.iocoder.yudao.framework.tenant.core.context.TenantContextHolder.setIgnore(true);
+        com.robot.platform.framework.tenant.core.context.TenantContextHolder.setTenantId(99L);
+        com.robot.platform.framework.tenant.core.context.TenantContextHolder.setIgnore(true);
         when(robots.selectByTenantAndIdForUpdate(10L, 7L)).thenReturn(robot());
         when(inbox.insertIfAbsent(any())).thenReturn(false);
 
         service.accept(identity(), envelope("01J0A1B2C3D4E5F6G7H8J9K0MN", 7));
 
-        assertThat(cn.iocoder.yudao.framework.tenant.core.context.TenantContextHolder.getTenantId()).isEqualTo(99L);
-        assertThat(cn.iocoder.yudao.framework.tenant.core.context.TenantContextHolder.isIgnore()).isTrue();
+        assertThat(com.robot.platform.framework.tenant.core.context.TenantContextHolder.getTenantId()).isEqualTo(99L);
+        assertThat(com.robot.platform.framework.tenant.core.context.TenantContextHolder.isIgnore()).isTrue();
     }
 
     private RobotMessageEnvelope<HeartbeatPayload> envelope(String messageId, long robotId) {

@@ -1,6 +1,6 @@
 package com.robot.platform.integration;
 
-import cn.iocoder.yudao.framework.common.exception.ServiceException;
+import com.robot.platform.framework.common.exception.ServiceException;
 import com.robot.platform.tenant.quota.dal.mysql.TenantUsageMapper;
 import com.robot.platform.tenant.quota.service.TenantRobotQuotaService;
 import org.junit.jupiter.api.Test;

@@ -21,7 +21,7 @@ mybatis-plus:
     db-config:
       id-type: AUTO
 
-yudao:
+robot-platform:
   security:
     mock-enable: false
   captcha:

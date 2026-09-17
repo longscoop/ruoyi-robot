@@ -7,7 +7,7 @@ import com.robot.platform.tenant.quota.dal.mysql.TenantUsageMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import static cn.iocoder.yudao.framework.common.exception.util.ServiceExceptionUtil.exception;
+import static com.robot.platform.framework.common.exception.util.ServiceExceptionUtil.exception;
 import static com.robot.platform.tenant.quota.enums.TenantQuotaErrorCodeConstants.*;
 
 @Service

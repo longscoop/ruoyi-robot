@@ -1,6 +1,6 @@
 package com.robot.platform.device.product.controller.admin.vo;
 
-import cn.iocoder.yudao.framework.common.validation.InEnum;
+import com.robot.platform.framework.common.validation.InEnum;
 import com.robot.platform.device.product.enums.ProductStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;

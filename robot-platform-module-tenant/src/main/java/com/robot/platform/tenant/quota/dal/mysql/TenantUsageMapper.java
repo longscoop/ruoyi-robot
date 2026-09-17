@@ -1,6 +1,6 @@
 package com.robot.platform.tenant.quota.dal.mysql;
 
-import cn.iocoder.yudao.framework.mybatis.core.mapper.BaseMapperX;
+import com.robot.platform.framework.mybatis.core.mapper.BaseMapperX;
 import com.robot.platform.tenant.quota.dal.dataobject.TenantUsageDO;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;

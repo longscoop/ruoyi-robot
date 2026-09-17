@@ -1,5 +1,5 @@
 package com.robot.platform.device.group.service;
-import cn.iocoder.yudao.framework.tenant.core.context.TenantContextHolder;
+import com.robot.platform.framework.tenant.core.context.TenantContextHolder;
 import com.robot.platform.device.device.dal.dataobject.DeviceDO;
 import com.robot.platform.device.device.dal.mysql.DeviceMapper;
 import com.robot.platform.device.group.dal.dataobject.*;
@@ -9,7 +9,7 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
-import static cn.iocoder.yudao.framework.common.exception.util.ServiceExceptionUtil.exception;
+import static com.robot.platform.framework.common.exception.util.ServiceExceptionUtil.exception;
 import static com.robot.platform.device.device.enums.DeviceErrorCodeConstants.*;
 @Service @RequiredArgsConstructor public class DeviceGroupServiceImpl implements DeviceGroupService {
     private final DeviceGroupMapper groupMapper; private final DeviceGroupRelationMapper relationMapper; private final DeviceMapper deviceMapper;

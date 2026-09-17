@@ -1,9 +1,9 @@
 package com.robot.platform.robot.realtime.outbox;
 
-import cn.iocoder.yudao.framework.common.enums.UserTypeEnum;
-import cn.iocoder.yudao.framework.common.util.json.JsonUtils;
-import cn.iocoder.yudao.framework.tenant.core.util.TenantUtils;
-import cn.iocoder.yudao.framework.websocket.core.sender.WebSocketMessageSender;
+import com.robot.platform.framework.common.enums.UserTypeEnum;
+import com.robot.platform.framework.common.util.json.JsonUtils;
+import com.robot.platform.framework.tenant.core.util.TenantUtils;
+import com.robot.platform.framework.websocket.core.sender.WebSocketMessageSender;
 import com.robot.platform.robot.realtime.model.TenantRobotRealtimeEvent;
 import com.robot.platform.robot.realtime.outbox.dal.dataobject.RobotRealtimeEventOutboxDO;
 import com.robot.platform.robot.realtime.outbox.dal.mysql.RobotRealtimeEventOutboxMapper;

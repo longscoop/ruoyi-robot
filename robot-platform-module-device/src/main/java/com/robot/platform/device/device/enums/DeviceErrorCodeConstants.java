@@ -1,6 +1,6 @@
 package com.robot.platform.device.device.enums;
 
-import cn.iocoder.yudao.framework.common.exception.ErrorCode;
+import com.robot.platform.framework.common.exception.ErrorCode;
 
 public interface DeviceErrorCodeConstants {
     ErrorCode DEVICE_NOT_EXISTS = new ErrorCode(1_010_002_000, "设备不存在");

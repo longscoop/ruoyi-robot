@@ -1,6 +1,6 @@
 package com.robot.platform.tenant.quota;
 
-import cn.iocoder.yudao.framework.common.exception.ServiceException;
+import com.robot.platform.framework.common.exception.ServiceException;
 import com.robot.platform.tenant.quota.dal.dataobject.TenantQuotaDO;
 import com.robot.platform.tenant.quota.dal.dataobject.TenantUsageDO;
 import com.robot.platform.tenant.quota.dal.mysql.TenantQuotaMapper;

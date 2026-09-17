@@ -1,6 +1,6 @@
 package com.robot.platform.robot.status;
 
-import cn.iocoder.yudao.framework.tenant.core.context.TenantContextHolder;
+import com.robot.platform.framework.tenant.core.context.TenantContextHolder;
 import com.robot.platform.robot.realtime.model.TenantRobotRealtimeEvent;
 import com.robot.platform.robot.realtime.service.RobotRealtimeEventPublisher;
 import com.robot.platform.robot.robot.dal.dataobject.RobotDO;

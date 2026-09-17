@@ -1,6 +1,6 @@
 package com.robot.platform.robot.status;
 
-import cn.iocoder.yudao.framework.security.core.util.SecurityFrameworkUtils;
+import com.robot.platform.framework.security.core.util.SecurityFrameworkUtils;
 import com.robot.platform.robot.status.controller.device.DeviceHeartbeatController;
 import com.robot.platform.robot.status.controller.device.vo.DeviceRobotConfigRespVO;
 import com.robot.platform.robot.status.service.DeviceHeartbeatApplicationService;

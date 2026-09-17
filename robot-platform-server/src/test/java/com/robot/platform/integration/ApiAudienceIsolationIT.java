@@ -1,7 +1,7 @@
 package com.robot.platform.integration;
 
-import cn.iocoder.yudao.framework.common.pojo.CommonResult;
-import cn.iocoder.yudao.framework.tenant.core.aop.TenantIgnore;
+import com.robot.platform.framework.common.pojo.CommonResult;
+import com.robot.platform.framework.tenant.core.aop.TenantIgnore;
 import com.robot.platform.device.auth.service.DeviceSession;
 import com.robot.platform.device.auth.service.DeviceSessionTokenService;
 import com.robot.platform.device.identity.service.DeviceHttpAuthenticationIdentity;
@@ -34,10 +34,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Import(ApiAudienceIsolationIT.Ports.class)
 @TestPropertySource(properties = {
         "robot.security.secret-master-key=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
-        "yudao.security.token-header=X-Access-Token",
-        "yudao.security.token-parameter=access_token",
-        "yudao.security.mock-enable=true",
-        "yudao.security.mock-secret=admin-control-"
+        "robot-platform.security.token-header=X-Access-Token",
+        "robot-platform.security.token-parameter=access_token",
+        "robot-platform.security.mock-enable=true",
+        "robot-platform.security.mock-secret=admin-control-"
 })
 class ApiAudienceIsolationIT extends AbstractRobotPlatformIntegrationTest {
     @Autowired private TestRestTemplate http;

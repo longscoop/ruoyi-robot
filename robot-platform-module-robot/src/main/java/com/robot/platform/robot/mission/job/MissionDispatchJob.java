@@ -1,6 +1,6 @@
 package com.robot.platform.robot.mission.job;
 
-import cn.iocoder.yudao.framework.tenant.core.util.TenantUtils;
+import com.robot.platform.framework.tenant.core.util.TenantUtils;
 import com.robot.platform.robot.mission.dal.mysql.MissionMapper;
 import com.robot.platform.robot.mission.service.MissionService;
 import lombok.RequiredArgsConstructor;

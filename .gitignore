@@ -51,7 +51,7 @@ rebel.xml
 application-my.yaml
 .env
 
-/yudao-ui-app/unpackage/
+/robot-platform-ui-app/unpackage/
 .DS_Store
 **/.DS_Store
 

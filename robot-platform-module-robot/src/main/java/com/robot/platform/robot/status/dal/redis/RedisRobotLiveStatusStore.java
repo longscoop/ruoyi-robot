@@ -1,6 +1,6 @@
 package com.robot.platform.robot.status.dal.redis;
 
-import cn.iocoder.yudao.framework.common.util.json.JsonUtils;
+import com.robot.platform.framework.common.util.json.JsonUtils;
 import com.robot.platform.robot.robot.enums.RobotOnlineStatus;
 import com.robot.platform.robot.status.model.RobotLiveStatus;
 import com.robot.platform.robot.status.service.RobotLiveStatusStore;

@@ -1,12 +1,12 @@
 package com.robot.platform.integration;
 
-import cn.iocoder.yudao.framework.common.biz.system.oauth2.OAuth2TokenCommonApi;
-import cn.iocoder.yudao.framework.common.biz.system.permission.PermissionCommonApi;
-import cn.iocoder.yudao.framework.security.config.AuthorizeRequestsCustomizer;
-import cn.iocoder.yudao.framework.security.config.YudaoSecurityAutoConfiguration;
-import cn.iocoder.yudao.framework.security.config.YudaoWebSecurityConfigurerAdapter;
-import cn.iocoder.yudao.framework.web.config.WebProperties;
-import cn.iocoder.yudao.framework.web.core.handler.GlobalExceptionHandler;
+import com.robot.platform.framework.common.biz.system.oauth2.OAuth2TokenCommonApi;
+import com.robot.platform.framework.common.biz.system.permission.PermissionCommonApi;
+import com.robot.platform.framework.security.config.AuthorizeRequestsCustomizer;
+import com.robot.platform.framework.security.config.RobotPlatformSecurityAutoConfiguration;
+import com.robot.platform.framework.security.config.RobotPlatformWebSecurityConfigurerAdapter;
+import com.robot.platform.framework.web.config.WebProperties;
+import com.robot.platform.framework.web.core.handler.GlobalExceptionHandler;
 import com.robot.platform.device.auth.service.DeviceSessionTokenService;
 import com.robot.platform.device.mqtt.controller.EmqxAuthenticationController;
 import com.robot.platform.device.mqtt.controller.EmqxAuthorizationController;
@@ -44,7 +44,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ActiveProfiles("unit-test")
 @ContextConfiguration(classes = {MqttCallbackSecurityChainTest.Ports.class,
         EmqxAuthenticationController.class, EmqxAuthorizationController.class})
-@ImportAutoConfiguration({YudaoSecurityAutoConfiguration.class, YudaoWebSecurityConfigurerAdapter.class})
+@ImportAutoConfiguration({RobotPlatformSecurityAutoConfiguration.class, RobotPlatformWebSecurityConfigurerAdapter.class})
 @Import({EmqxAuthenticationController.class, EmqxAuthorizationController.class,
         MqttCallbackPreAuthRateLimitFilter.class, RobotSecurityConfiguration.class,
         MemberAppSecurityFilterCustomizer.class})

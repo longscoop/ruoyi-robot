@@ -1,7 +1,7 @@
 package com.robot.platform.device.product.dal.mysql;
 
-import cn.iocoder.yudao.framework.mybatis.core.mapper.BaseMapperX;
-import cn.iocoder.yudao.framework.mybatis.core.query.LambdaQueryWrapperX;
+import com.robot.platform.framework.mybatis.core.mapper.BaseMapperX;
+import com.robot.platform.framework.mybatis.core.query.LambdaQueryWrapperX;
 import com.robot.platform.device.product.dal.dataobject.ProductDO;
 import com.robot.platform.device.product.service.command.ProductPageQuery;
 import org.apache.ibatis.annotations.Mapper;

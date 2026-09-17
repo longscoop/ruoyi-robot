@@ -1,7 +1,8 @@
 # RuoYi Robot
 
-ruoyi-robot 基于ruoyi-pro的基础功能的开源机器人智能管理平台，面向机器人、服务机器人和 AMR，提供多租户、机器人管理、Mission、巡检、MQTT、OTA、Agent、数字人、知识库、告警和远程运维能力。
+RuoYi Robot 是社区独立开源项目，并非 RuoYi 官方项目。
 
+RuoYi Robot is a Java 17 modular-monolith foundation with a MySQL-oriented backend and Vue 3 administration shell. Its Maven modules use `robot-platform-*` and its Java packages use `com.robot.platform`. Existing HTTP API paths and physical database table/sequence names are preserved for compatibility.
 
 ## Platform
 
@@ -94,3 +95,8 @@ scripts/e2e/core-platform.sh
 registry 访问的环境执行 `pnpm install --frozen-lockfile` 前，不能宣称整仓发布验证全绿。此问题已按用户决定暂缓，Task14
 没有修改任何 UI 依赖或锁文件。
 
+## Upstream attribution
+
+This project imports MIT-licensed backend and Vue 3 admin foundations. The pinned revisions, renamed source locations, and instructions for retrieving the original provenance record are in [UPSTREAM.md](UPSTREAM.md).
+
+The upstream MIT [LICENSE](LICENSE) is preserved.

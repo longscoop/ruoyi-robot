@@ -10,9 +10,9 @@
 ## 🐶 新手必读
 
 * nodejs > 16.18.0 && pnpm > 8.6.0 (强制使用pnpm)
-* 演示地址【Vue3 + element-plus】：<http://dashboard-vue3.yudao.iocoder.cn>
-* 演示地址【Vue3 + vben5.0(ant-design-vue)】：<http://dashboard-vben.yudao.iocoder.cn>
-* 演示地址【Vue2 + element-ui】：<http://dashboard.yudao.iocoder.cn>
+* 示例 URL【Vue3 + element-plus】：`http://dashboard-vue3.robot-platform.iocoder.cn`（命名示例，不表示已部署端点）
+* 示例 URL【Vue3 + vben5.0(ant-design-vue)】：`http://dashboard-vben.robot-platform.iocoder.cn`（命名示例，不表示已部署端点）
+* 示例 URL【Vue2 + element-ui】：`http://dashboard.robot-platform.iocoder.cn`（命名示例，不表示已部署端点）
 * 启动文档：<https://doc.iocoder.cn/quick-start/>
 * 视频教程：<https://doc.iocoder.cn/video/>
 
@@ -75,7 +75,7 @@
 
 ② Spring Cloud 微服务架构：<https://cloud.iocoder.cn>
 
-![架构图](/.image/common/yudao-cloud-architecture.png)
+![架构图](/.image/common/robot-platform-cloud-architecture.png)
 
 ## 内置功能
 
@@ -310,7 +310,7 @@
 
 ### IM 即时通讯
 
-演示地址（Vue3 + Element Plus）：<http://dashboard-vue3.yudao.iocoder.cn>
+示例 URL（Vue3 + Element Plus）：`http://dashboard-vue3.robot-platform.iocoder.cn`（命名示例，不表示已部署端点）
 
 使用文档：<https://doc.iocoder.cn/im-preview/>
 

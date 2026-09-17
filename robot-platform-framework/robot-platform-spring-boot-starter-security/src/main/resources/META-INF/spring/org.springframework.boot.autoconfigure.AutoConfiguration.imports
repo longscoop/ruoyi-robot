@@ -1,0 +1,3 @@
+com.robot.platform.framework.security.config.RobotPlatformSecurityAutoConfiguration
+com.robot.platform.framework.security.config.RobotPlatformWebSecurityConfigurerAdapter
+com.robot.platform.framework.operatelog.config.RobotPlatformOperateLogConfiguration

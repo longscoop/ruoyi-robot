@@ -5,7 +5,7 @@ import com.robot.platform.robot.robot.dal.dataobject.RobotDO;
 import com.robot.platform.robot.robot.dal.mysql.RobotMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
-import static cn.iocoder.yudao.framework.common.exception.util.ServiceExceptionUtil.exception;
+import static com.robot.platform.framework.common.exception.util.ServiceExceptionUtil.exception;
 import static com.robot.platform.member.member.enums.MemberErrorCodeConstants.MEMBER_BINDING_INVALID;
 
 /** Robot-side implementation keeps ownership checks with the robot aggregate and avoids a module cycle. */

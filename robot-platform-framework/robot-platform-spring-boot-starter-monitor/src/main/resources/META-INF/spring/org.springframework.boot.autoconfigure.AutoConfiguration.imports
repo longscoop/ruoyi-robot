@@ -1,0 +1,2 @@
+com.robot.platform.framework.tracer.config.RobotPlatformTracerAutoConfiguration
+com.robot.platform.framework.tracer.config.RobotPlatformMetricsAutoConfiguration

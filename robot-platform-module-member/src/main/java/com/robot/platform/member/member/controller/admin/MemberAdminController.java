@@ -1,7 +1,7 @@
 package com.robot.platform.member.member.controller.admin;
 
-import cn.iocoder.yudao.framework.common.pojo.CommonResult;
-import cn.iocoder.yudao.framework.tenant.core.context.TenantContextHolder;
+import com.robot.platform.framework.common.pojo.CommonResult;
+import com.robot.platform.framework.tenant.core.context.TenantContextHolder;
 import com.robot.platform.member.member.dal.dataobject.MemberDO;
 import com.robot.platform.member.member.dal.mysql.MemberMapper;
 import com.robot.platform.member.member.enums.MemberStatus;
@@ -14,7 +14,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
-import static cn.iocoder.yudao.framework.common.pojo.CommonResult.success;
+import static com.robot.platform.framework.common.pojo.CommonResult.success;
 
 /** Tenant administrators manage member accounts without exposing the password hash. */
 @RestController @RequestMapping("/member/members") @Validated @RequiredArgsConstructor

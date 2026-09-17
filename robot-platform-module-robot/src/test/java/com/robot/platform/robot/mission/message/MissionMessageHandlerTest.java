@@ -21,7 +21,7 @@ class MissionMessageHandlerTest {
     private final MissionActionMessageHandler handler = new MissionActionMessageHandler(inbox, missions);
 
     @AfterEach
-    void clearTenant() { cn.iocoder.yudao.framework.tenant.core.context.TenantContextHolder.clear(); }
+    void clearTenant() { com.robot.platform.framework.tenant.core.context.TenantContextHolder.clear(); }
 
     @Test
     void duplicateActionMessageDoesNotReachMissionService() {

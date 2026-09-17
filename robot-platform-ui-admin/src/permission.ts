@@ -37,7 +37,7 @@ router.beforeEach(async (to, from, next) => {
       const userStore = useUserStoreWithOut()
       const permissionStore = usePermissionStoreWithOut()
       // 异步加载字典
-      // 另外，间接 issue：https://gitee.com/yudaocode/yudao-ui-admin-vue3/issues/ID9FLI
+      // 另外，间接上游 issue ID9FLI；来源见固定版本的溯源记录。
       if (!dictStore.getIsSetDict) {
         dictStore.setDictMap().then()
       }

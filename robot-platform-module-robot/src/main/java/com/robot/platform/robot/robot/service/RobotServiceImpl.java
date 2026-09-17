@@ -1,7 +1,7 @@
 package com.robot.platform.robot.robot.service;
 
-import cn.iocoder.yudao.framework.common.pojo.PageResult;
-import cn.iocoder.yudao.framework.tenant.core.context.TenantContextHolder;
+import com.robot.platform.framework.common.pojo.PageResult;
+import com.robot.platform.framework.tenant.core.context.TenantContextHolder;
 import com.robot.platform.device.spi.RobotProvisionCommand;
 import com.robot.platform.robot.robot.convert.RobotConvert;
 import com.robot.platform.robot.robot.dal.dataobject.RobotCapabilityDO;
@@ -21,7 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
-import static cn.iocoder.yudao.framework.common.exception.util.ServiceExceptionUtil.exception;
+import static com.robot.platform.framework.common.exception.util.ServiceExceptionUtil.exception;
 import static com.robot.platform.robot.robot.enums.RobotErrorCodeConstants.*;
 
 @Service

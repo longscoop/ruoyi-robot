@@ -1,7 +1,7 @@
 package com.robot.platform.device.device.dal.dataobject;
 
-import cn.iocoder.yudao.framework.mybatis.core.dataobject.BaseDO;
-import cn.iocoder.yudao.framework.tenant.core.aop.TenantIgnore;
+import com.robot.platform.framework.mybatis.core.dataobject.BaseDO;
+import com.robot.platform.framework.tenant.core.aop.TenantIgnore;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.*;

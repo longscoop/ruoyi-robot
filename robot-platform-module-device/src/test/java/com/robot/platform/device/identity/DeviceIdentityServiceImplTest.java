@@ -1,6 +1,6 @@
 package com.robot.platform.device.identity;
 
-import cn.iocoder.yudao.framework.common.exception.ServiceException;
+import com.robot.platform.framework.common.exception.ServiceException;
 import com.robot.platform.device.device.dal.dataobject.DeviceDO;
 import com.robot.platform.device.device.dal.mysql.DeviceMapper;
 import com.robot.platform.device.device.enums.DeviceLifecycle;

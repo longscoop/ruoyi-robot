@@ -89,7 +89,7 @@ public class RobotLiveStatusQueryService implements RobotQueryService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public RobotLiveStatus getStatus(long robotId) {
-        return find(cn.iocoder.yudao.framework.tenant.core.context.TenantContextHolder.getRequiredTenantId(), robotId)
+        return find(com.robot.platform.framework.tenant.core.context.TenantContextHolder.getRequiredTenantId(), robotId)
                 .orElse(null);
     }
 }

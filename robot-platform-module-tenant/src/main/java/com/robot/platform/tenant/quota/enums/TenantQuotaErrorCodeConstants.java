@@ -1,6 +1,6 @@
 package com.robot.platform.tenant.quota.enums;
 
-import cn.iocoder.yudao.framework.common.exception.ErrorCode;
+import com.robot.platform.framework.common.exception.ErrorCode;
 
 public interface TenantQuotaErrorCodeConstants {
     ErrorCode TENANT_QUOTA_NOT_EXISTS = new ErrorCode(1_010_002_000, "租户机器人配额不存在");

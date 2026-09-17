@@ -1,6 +1,6 @@
 package com.robot.platform.robot.mission.message.handler;
 
-import cn.iocoder.yudao.framework.tenant.core.context.TenantContextHolder;
+import com.robot.platform.framework.tenant.core.context.TenantContextHolder;
 import com.robot.platform.device.identity.service.DeviceIdentity;
 import com.robot.platform.mqtt.MessageSource;
 import com.robot.platform.mqtt.RobotMessageEnvelope;

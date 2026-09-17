@@ -11,7 +11,7 @@
       <el-table-column label="消息ID" prop="id" min-width="120px" show-overflow-tooltip />
       <el-table-column label="消息名称" prop="name" min-width="120px" show-overflow-tooltip />
       <el-table-column label="操作" width="110px">
-        <!-- 补充“编辑”、“移除”功能。相关 issue：https://github.com/YunaiV/yudao-cloud/issues/270 -->
+        <!-- 补充“编辑”、“移除”功能。相关上游 issue 270；来源见固定版本的溯源记录。 -->
         <template #default="scope">
           <el-button link @click="openEditModel('message', scope.row, scope.$index)" size="small">
             编辑

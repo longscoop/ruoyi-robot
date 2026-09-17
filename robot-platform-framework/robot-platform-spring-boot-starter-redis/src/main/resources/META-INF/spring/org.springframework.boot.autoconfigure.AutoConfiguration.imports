@@ -1,0 +1,2 @@
+com.robot.platform.framework.redis.config.RobotPlatformRedisAutoConfiguration
+com.robot.platform.framework.redis.config.RobotPlatformCacheAutoConfiguration

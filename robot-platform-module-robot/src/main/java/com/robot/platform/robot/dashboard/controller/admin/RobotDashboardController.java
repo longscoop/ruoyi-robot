@@ -1,6 +1,6 @@
 package com.robot.platform.robot.dashboard.controller.admin;
 
-import cn.iocoder.yudao.framework.common.pojo.CommonResult;
+import com.robot.platform.framework.common.pojo.CommonResult;
 import com.robot.platform.robot.dashboard.model.RobotDashboard;
 import com.robot.platform.robot.dashboard.service.RobotDashboardService;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -10,8 +10,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import static cn.iocoder.yudao.framework.common.pojo.CommonResult.success;
-import static cn.iocoder.yudao.framework.tenant.core.context.TenantContextHolder.getRequiredTenantId;
+import static com.robot.platform.framework.common.pojo.CommonResult.success;
+import static com.robot.platform.framework.tenant.core.context.TenantContextHolder.getRequiredTenantId;
 
 @Tag(name = "管理后台 - 机器人仪表盘")
 @RestController

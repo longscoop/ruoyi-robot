@@ -1,6 +1,6 @@
 package com.robot.platform.member.auth;
 
-import cn.iocoder.yudao.framework.common.exception.ServiceException;
+import com.robot.platform.framework.common.exception.ServiceException;
 import com.robot.platform.member.auth.service.MemberLoginCommand;
 import com.robot.platform.member.auth.service.MemberSession;
 import com.robot.platform.member.auth.service.PasswordMemberAuthenticationProvider;

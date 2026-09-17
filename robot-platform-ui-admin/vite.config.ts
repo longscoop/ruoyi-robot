@@ -95,8 +95,8 @@ export default ({command, mode}: ConfigEnv): UserConfig => {
                     },
                     codeSplitting: {
                         groups: [
-                            { name: 'echarts', test: /node_modules[\\/]echarts[\\/]/ }, // 将 echarts 单独打包，参考 https://gitee.com/yudaocode/yudao-ui-admin-vue3/issues/IAB1SX 讨论
-                            { name: 'form-create', test: /node_modules[\\/]@form-create[\\/]element-ui[\\/]/ }, // 参考 https://github.com/yudaocode/yudao-ui-admin-vue3/issues/148 讨论
+                            { name: 'echarts', test: /node_modules[\\/]echarts[\\/]/ }, // 将 echarts 单独打包，参考上游 issue IAB1SX 的讨论
+                            { name: 'form-create', test: /node_modules[\\/]@form-create[\\/]element-ui[\\/]/ }, // 参考上游 issue 148 的讨论
                             { name: 'form-designer', test: /node_modules[\\/]@form-create[\\/]designer[\\/]/ }
                         ]
                     }

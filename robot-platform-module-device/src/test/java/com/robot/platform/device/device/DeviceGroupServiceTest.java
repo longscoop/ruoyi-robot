@@ -1,7 +1,7 @@
 package com.robot.platform.device.device;
 
-import cn.iocoder.yudao.framework.common.exception.ServiceException;
-import cn.iocoder.yudao.framework.tenant.core.context.TenantContextHolder;
+import com.robot.platform.framework.common.exception.ServiceException;
+import com.robot.platform.framework.tenant.core.context.TenantContextHolder;
 import com.robot.platform.device.device.dal.dataobject.DeviceDO;
 import com.robot.platform.device.device.dal.mysql.DeviceMapper;
 import com.robot.platform.device.group.dal.dataobject.DeviceGroupDO;

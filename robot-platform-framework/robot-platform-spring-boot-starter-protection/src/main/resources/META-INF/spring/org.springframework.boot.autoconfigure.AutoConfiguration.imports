@@ -1,0 +1,4 @@
+com.robot.platform.framework.idempotent.config.RobotPlatformIdempotentConfiguration
+com.robot.platform.framework.lock4j.config.RobotPlatformLock4jConfiguration
+com.robot.platform.framework.ratelimiter.config.RobotPlatformRateLimiterConfiguration
+com.robot.platform.framework.signature.config.RobotPlatformApiSignatureAutoConfiguration

@@ -1,5 +1,5 @@
 <!-- 物料消耗记录行列表（只读，带分页） -->
-<!-- DONE @AI：挪到 /Users/yunai/Java/yudao-all-in-one/yudao-ui-admin-vue3/src/views/mes/pro/feedback；不作为 components -->
+<!-- DONE @AI：挪到 /Users/yunai/Java/robot-platform-all-in-one/robot-platform-ui-admin-vue3/src/views/mes/pro/feedback；不作为 components -->
 <template>
   <div class="overflow-hidden">
     <el-table v-loading="loading" :data="list" stripe>

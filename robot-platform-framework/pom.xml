@@ -4,14 +4,28 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>cn.iocoder.boot</groupId>
-        <artifactId>yudao</artifactId>
+        <groupId>com.robot.platform</groupId>
+        <artifactId>robot-platform</artifactId>
         <version>${revision}</version>
     </parent>
     <artifactId>robot-platform-framework</artifactId>
     <packaging>pom</packaging>
     <name>${project.artifactId}</name>
     <modules>
+        <module>robot-platform-common</module>
+        <module>robot-platform-spring-boot-starter-mybatis</module>
+        <module>robot-platform-spring-boot-starter-redis</module>
+        <module>robot-platform-spring-boot-starter-web</module>
+        <module>robot-platform-spring-boot-starter-security</module>
+        <module>robot-platform-spring-boot-starter-websocket</module>
+        <module>robot-platform-spring-boot-starter-monitor</module>
+        <module>robot-platform-spring-boot-starter-protection</module>
+        <module>robot-platform-spring-boot-starter-job</module>
+        <module>robot-platform-spring-boot-starter-mq</module>
+        <module>robot-platform-spring-boot-starter-excel</module>
+        <module>robot-platform-spring-boot-starter-biz-tenant</module>
+        <module>robot-platform-spring-boot-starter-biz-data-permission</module>
+        <module>robot-platform-spring-boot-starter-biz-ip</module>
         <module>robot-platform-framework-security</module>
         <module>robot-platform-framework-mqtt</module>
     </modules>

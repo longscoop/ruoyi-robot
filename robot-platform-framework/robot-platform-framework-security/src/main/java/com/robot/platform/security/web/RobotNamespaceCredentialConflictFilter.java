@@ -1,7 +1,7 @@
 package com.robot.platform.security.web;
 
-import cn.iocoder.yudao.framework.security.config.SecurityProperties;
-import cn.iocoder.yudao.framework.security.core.util.SecurityFrameworkUtils;
+import com.robot.platform.framework.security.config.SecurityProperties;
+import com.robot.platform.framework.security.core.util.SecurityFrameworkUtils;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;

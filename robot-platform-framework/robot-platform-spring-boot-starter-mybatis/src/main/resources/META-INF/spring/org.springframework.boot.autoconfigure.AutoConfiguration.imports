@@ -1,0 +1,3 @@
+com.robot.platform.framework.datasource.config.RobotPlatformDataSourceAutoConfiguration
+com.robot.platform.framework.mybatis.config.RobotPlatformMybatisAutoConfiguration
+com.robot.platform.framework.translate.config.RobotPlatformTranslateAutoConfiguration

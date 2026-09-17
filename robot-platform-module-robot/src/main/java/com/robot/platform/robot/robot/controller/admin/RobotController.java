@@ -1,7 +1,7 @@
 package com.robot.platform.robot.robot.controller.admin;
 
-import cn.iocoder.yudao.framework.common.pojo.CommonResult;
-import cn.iocoder.yudao.framework.common.pojo.PageResult;
+import com.robot.platform.framework.common.pojo.CommonResult;
+import com.robot.platform.framework.common.pojo.PageResult;
 import com.robot.platform.robot.robot.controller.admin.vo.RobotCapabilityRespVO;
 import com.robot.platform.robot.robot.controller.admin.vo.RobotCapabilityUpsertReqVO;
 import com.robot.platform.robot.robot.controller.admin.vo.RobotPageReqVO;
@@ -31,7 +31,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
-import static cn.iocoder.yudao.framework.common.pojo.CommonResult.success;
+import static com.robot.platform.framework.common.pojo.CommonResult.success;
 
 /** Robot creation/deletion is intentionally absent: DeviceService owns that lifecycle. */
 @Tag(name = "管理后台 - 机器人")
@@ -54,7 +54,7 @@ public class RobotController {
     @PreAuthorize("@ss.hasPermission('robot:robot:query')")
     public CommonResult<RobotLiveStatus> status(@PathVariable long id) {
         robotService.get(id); // tenant interceptor/RBAC has already constrained the row.
-        return success(liveStatuses.find(cn.iocoder.yudao.framework.tenant.core.context.TenantContextHolder.getRequiredTenantId(), id).orElse(null));
+        return success(liveStatuses.find(com.robot.platform.framework.tenant.core.context.TenantContextHolder.getRequiredTenantId(), id).orElse(null));
     }
 
     @GetMapping

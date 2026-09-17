@@ -1,6 +1,6 @@
 package com.robot.platform.device.product.controller.admin;
 
-import cn.iocoder.yudao.framework.common.pojo.CommonResult;
+import com.robot.platform.framework.common.pojo.CommonResult;
 import com.robot.platform.device.product.controller.admin.vo.ProductCreateReqVO;
 import com.robot.platform.device.product.controller.admin.vo.ProductRespVO;
 import com.robot.platform.device.product.controller.admin.vo.ProductUpdateReqVO;
@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-import static cn.iocoder.yudao.framework.common.pojo.CommonResult.success;
+import static com.robot.platform.framework.common.pojo.CommonResult.success;
 
 @Tag(name = "管理后台 - 产品型号")
 @RestController

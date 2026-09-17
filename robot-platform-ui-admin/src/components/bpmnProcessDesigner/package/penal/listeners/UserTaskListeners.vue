@@ -342,7 +342,7 @@ const resetListenersList = () => {
   otherExtensionList.value =
     businessObject?.extensionElements?.values?.filter(
       (ex) => ex.$type !== `${prefix}:TaskListener`
-    ) ?? [] // 保留非监听器类型的扩展属性，避免移除监听器时清空其他配置（如审批人等）。相关案例：https://gitee.com/yudaocode/yudao-ui-admin-vue3/issues/ICMSYC
+    ) ?? [] // 保留非监听器类型的扩展属性，避免移除监听器时清空其他配置（如审批人等）。相关案例：上游 issue ICMSYC。
   bpmnElementListeners.value =
     businessObject?.extensionElements?.values?.filter(
       (ex) => ex.$type === `${prefix}:TaskListener`

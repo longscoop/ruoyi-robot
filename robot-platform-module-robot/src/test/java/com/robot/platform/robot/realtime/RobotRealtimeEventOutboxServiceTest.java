@@ -1,8 +1,8 @@
 package com.robot.platform.robot.realtime;
 
-import cn.iocoder.yudao.framework.common.enums.UserTypeEnum;
-import cn.iocoder.yudao.framework.tenant.core.context.TenantContextHolder;
-import cn.iocoder.yudao.framework.websocket.core.sender.WebSocketMessageSender;
+import com.robot.platform.framework.common.enums.UserTypeEnum;
+import com.robot.platform.framework.tenant.core.context.TenantContextHolder;
+import com.robot.platform.framework.websocket.core.sender.WebSocketMessageSender;
 import com.robot.platform.robot.realtime.model.TenantRobotRealtimeEvent;
 import com.robot.platform.robot.realtime.outbox.RobotRealtimeEventOutboxService;
 import com.robot.platform.robot.realtime.outbox.dal.dataobject.RobotRealtimeEventOutboxDO;
@@ -82,7 +82,7 @@ class RobotRealtimeEventOutboxServiceTest {
         RobotRealtimeEventOutboxDO row = new RobotRealtimeEventOutboxDO();
         row.setId(id); row.setTenantId(20L); row.setEventKey("REQ-1:ROBOT_STATUS_CHANGED");
         row.setEventType("ROBOT_STATUS_CHANGED");
-        row.setPayload(cn.iocoder.yudao.framework.common.util.json.JsonUtils.toJsonString(event()));
+        row.setPayload(com.robot.platform.framework.common.util.json.JsonUtils.toJsonString(event()));
         row.setStatus("RETRY"); row.setAttemptCount(1);
         row.setClaimedAt(java.time.LocalDateTime.ofInstant(NOW, ZoneOffset.UTC));
         return row;

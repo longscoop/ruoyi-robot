@@ -1,7 +1,7 @@
 package com.robot.platform.device.mqtt.controller;
 
 import cn.hutool.crypto.SecureUtil;
-import cn.iocoder.yudao.framework.ratelimiter.core.redis.RateLimiterRedisDAO;
+import com.robot.platform.framework.ratelimiter.core.redis.RateLimiterRedisDAO;
 import com.robot.platform.mqtt.RobotMqttProperties;
 import org.springframework.stereotype.Component;
 

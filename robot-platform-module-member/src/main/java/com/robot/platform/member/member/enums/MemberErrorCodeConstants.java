@@ -1,6 +1,6 @@
 package com.robot.platform.member.member.enums;
 
-import cn.iocoder.yudao.framework.common.exception.ErrorCode;
+import com.robot.platform.framework.common.exception.ErrorCode;
 
 /** Member-domain errors deliberately do not disclose password or token material. */
 public interface MemberErrorCodeConstants {

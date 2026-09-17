@@ -1,6 +1,6 @@
 package com.robot.platform.member.auth;
 
-import cn.iocoder.yudao.framework.security.core.util.SecurityFrameworkUtils;
+import com.robot.platform.framework.security.core.util.SecurityFrameworkUtils;
 import com.robot.platform.member.auth.security.MemberAppSessionAuthenticationFilter;
 import com.robot.platform.member.auth.service.MemberSession;
 import com.robot.platform.member.auth.service.MemberSessionTokenService;

@@ -1,6 +1,6 @@
 package com.robot.platform.device.product.service;
 
-import cn.iocoder.yudao.framework.tenant.core.context.TenantContextHolder;
+import com.robot.platform.framework.tenant.core.context.TenantContextHolder;
 import com.robot.platform.device.product.dal.dataobject.ProductDO;
 import com.robot.platform.device.product.dal.mysql.ProductMapper;
 import com.robot.platform.device.product.enums.ProductStatus;
@@ -12,7 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
-import static cn.iocoder.yudao.framework.common.exception.util.ServiceExceptionUtil.exception;
+import static com.robot.platform.framework.common.exception.util.ServiceExceptionUtil.exception;
 import static com.robot.platform.device.product.enums.ProductErrorCodeConstants.*;
 
 @Service

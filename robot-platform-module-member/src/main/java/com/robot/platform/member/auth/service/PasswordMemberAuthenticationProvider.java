@@ -8,7 +8,7 @@ import com.robot.platform.security.SubjectType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import static cn.iocoder.yudao.framework.common.exception.util.ServiceExceptionUtil.exception;
+import static com.robot.platform.framework.common.exception.util.ServiceExceptionUtil.exception;
 import static com.robot.platform.member.member.enums.MemberErrorCodeConstants.*;
 
 /** Password provider compares only BCrypt-compatible stored hashes and never logs credentials. */

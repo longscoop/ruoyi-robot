@@ -1,6 +1,6 @@
 package com.robot.platform.robot.message.inbox.dal.mysql;
 
-import cn.iocoder.yudao.framework.mybatis.core.mapper.BaseMapperX;
+import com.robot.platform.framework.mybatis.core.mapper.BaseMapperX;
 import com.robot.platform.robot.message.inbox.dal.dataobject.RobotMessageInboxDO;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;

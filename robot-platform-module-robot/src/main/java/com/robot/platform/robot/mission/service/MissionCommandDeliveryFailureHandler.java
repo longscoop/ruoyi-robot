@@ -1,6 +1,6 @@
 package com.robot.platform.robot.mission.service;
 
-import cn.iocoder.yudao.framework.tenant.core.util.TenantUtils;
+import com.robot.platform.framework.tenant.core.util.TenantUtils;
 import com.robot.platform.robot.command.outbox.dal.dataobject.RobotCommandOutboxDO;
 import com.robot.platform.robot.command.outbox.service.RobotCommandDeliveryFailureHandler;
 import lombok.RequiredArgsConstructor;

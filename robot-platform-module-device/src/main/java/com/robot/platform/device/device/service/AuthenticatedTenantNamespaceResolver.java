@@ -1,6 +1,6 @@
 package com.robot.platform.device.device.service;
 
-import cn.iocoder.yudao.framework.common.biz.system.tenant.TenantCommonApi;
+import com.robot.platform.framework.common.biz.system.tenant.TenantCommonApi;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 

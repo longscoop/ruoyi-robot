@@ -1,0 +1,7 @@
+com.robot.platform.framework.apilog.config.RobotPlatformApiLogAutoConfiguration
+com.robot.platform.framework.jackson.config.RobotPlatformJacksonAutoConfiguration
+com.robot.platform.framework.swagger.config.RobotPlatformSwaggerAutoConfiguration
+com.robot.platform.framework.web.config.RobotPlatformWebAutoConfiguration
+com.robot.platform.framework.xss.config.RobotPlatformXssAutoConfiguration
+com.robot.platform.framework.banner.config.RobotPlatformBannerAutoConfiguration
+com.robot.platform.framework.encrypt.config.RobotPlatformApiEncryptAutoConfiguration

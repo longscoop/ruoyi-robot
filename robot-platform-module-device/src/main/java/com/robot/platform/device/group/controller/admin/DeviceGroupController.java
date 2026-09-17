@@ -1,5 +1,5 @@
 package com.robot.platform.device.group.controller.admin;
-import cn.iocoder.yudao.framework.common.pojo.CommonResult;
+import com.robot.platform.framework.common.pojo.CommonResult;
 import com.robot.platform.device.group.dal.dataobject.DeviceGroupDO;
 import com.robot.platform.device.group.service.DeviceGroupService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -12,7 +12,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
-import static cn.iocoder.yudao.framework.common.pojo.CommonResult.success;
+import static com.robot.platform.framework.common.pojo.CommonResult.success;
 @RestController @RequestMapping("/admin-api/device/groups") @Validated @RequiredArgsConstructor public class DeviceGroupController {
  private final DeviceGroupService service;
  @PostMapping @PreAuthorize("@ss.hasPermission('device:group:create')") public CommonResult<Long> create(@Validated @RequestBody GroupReq r){return success(service.create(r.name,r.remark));}

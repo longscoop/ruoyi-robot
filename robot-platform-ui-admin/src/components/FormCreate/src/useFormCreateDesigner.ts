@@ -135,7 +135,7 @@ export const useFormCreateDesigner = async (designer: Ref) => {
    * 修复重复的字段 ID 问题
    * 当复制组件时，自动为新组件生成新的字段 ID
    *
-   * 对应 issue：https://gitee.com/yudaocode/yudao-ui-admin-vue3/issues/ICM22X
+   * 对应上游 issue ICM22X；来源见固定版本的溯源记录。
    */
   const fixDuplicateFields = () => {
     // 获取当前所有规则

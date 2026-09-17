@@ -3,13 +3,12 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    <groupId>cn.iocoder.boot</groupId>
-    <artifactId>yudao</artifactId>
+    <groupId>com.robot.platform</groupId>
+    <artifactId>robot-platform</artifactId>
     <version>${revision}</version>
     <packaging>pom</packaging>
     <modules>
-        <module>yudao-dependencies</module>
-        <module>yudao-framework</module>
+        <module>robot-platform-dependencies</module>
         <module>robot-platform-framework</module>
         <module>robot-platform-module-tenant</module>
         <module>robot-platform-module-member</module>
@@ -18,24 +17,24 @@
         <!-- Server 主项目 -->
         <module>robot-platform-server</module>
         <!-- 各种 module 拓展 -->
-        <module>yudao-module-system</module>
-        <module>yudao-module-infra</module>
-<!--        <module>yudao-module-member</module>-->
-<!--        <module>yudao-module-bpm</module>-->
-<!--        <module>yudao-module-report</module>-->
-<!--        <module>yudao-module-mp</module>-->
-<!--        <module>yudao-module-pay</module>-->
-<!--        <module>yudao-module-mall</module>-->
-<!--        <module>yudao-module-crm</module>-->
-<!--        <module>yudao-module-erp</module>-->
-<!--        <module>yudao-module-iot</module>-->
-<!--        <module>yudao-module-mes</module>-->
-<!--        <module>yudao-module-wms</module>-->
-<!--        <module>yudao-module-hrm</module>-->
-<!--        <module>yudao-module-fms</module>-->
-        <!--        <module>yudao-module-im</module>-->
+        <module>robot-platform-module-system</module>
+        <module>robot-platform-module-infra</module>
+<!--        <module>robot-platform-module-member</module>-->
+<!--        <module>robot-platform-module-bpm</module>-->
+<!--        <module>robot-platform-module-report</module>-->
+<!--        <module>robot-platform-module-mp</module>-->
+<!--        <module>robot-platform-module-pay</module>-->
+<!--        <module>robot-platform-module-mall</module>-->
+<!--        <module>robot-platform-module-crm</module>-->
+<!--        <module>robot-platform-module-erp</module>-->
+<!--        <module>robot-platform-module-iot</module>-->
+<!--        <module>robot-platform-module-mes</module>-->
+<!--        <module>robot-platform-module-wms</module>-->
+<!--        <module>robot-platform-module-hrm</module>-->
+<!--        <module>robot-platform-module-fms</module>-->
+        <!--        <module>robot-platform-module-im</module>-->
 <!-- 请参考 https://doc.iocoder.cn/ai/build/ 文档，完成 AI 模块的启动！！！ -->
-<!--        <module>yudao-module-ai</module>-->
+<!--        <module>robot-platform-module-ai</module>-->
     </modules>
 
     <name>${project.artifactId}</name>
@@ -61,8 +60,8 @@
     <dependencyManagement>
         <dependencies>
             <dependency>
-                <groupId>cn.iocoder.boot</groupId>
-                <artifactId>yudao-dependencies</artifactId>
+                <groupId>com.robot.platform</groupId>
+                <artifactId>robot-platform-dependencies</artifactId>
                 <version>${revision}</version>
                 <type>pom</type>
                 <scope>import</scope>

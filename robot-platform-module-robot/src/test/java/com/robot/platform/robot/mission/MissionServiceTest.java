@@ -1,6 +1,6 @@
 package com.robot.platform.robot.mission;
 
-import cn.iocoder.yudao.framework.tenant.core.context.TenantContextHolder;
+import com.robot.platform.framework.tenant.core.context.TenantContextHolder;
 import com.robot.platform.robot.mission.dal.dataobject.MissionDO;
 import com.robot.platform.robot.mission.dal.mysql.MissionActionMapper;
 import com.robot.platform.robot.mission.dal.mysql.MissionEventMapper;
@@ -186,12 +186,12 @@ class MissionServiceTest {
     }
 
     private static String jsonValue(String payload, String key) {
-        return cn.iocoder.yudao.framework.common.util.json.JsonUtils.parseObject(payload, java.util.Map.class).get(key).toString();
+        return com.robot.platform.framework.common.util.json.JsonUtils.parseObject(payload, java.util.Map.class).get(key).toString();
     }
 
     @SuppressWarnings("unchecked")
     private static long jsonActionId(String payload) {
-        java.util.Map<String, Object> value = cn.iocoder.yudao.framework.common.util.json.JsonUtils.parseObject(payload, java.util.Map.class);
+        java.util.Map<String, Object> value = com.robot.platform.framework.common.util.json.JsonUtils.parseObject(payload, java.util.Map.class);
         return ((Number) ((java.util.Map<String, Object>) ((java.util.List<?>) value.get("actions")).get(0)).get("id")).longValue();
     }
 

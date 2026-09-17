@@ -1,6 +1,6 @@
 package com.robot.platform.robot.robot.service.command;
 
-import cn.iocoder.yudao.framework.common.pojo.PageParam;
+import com.robot.platform.framework.common.pojo.PageParam;
 import lombok.Data;
 
 @Data

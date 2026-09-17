@@ -1,6 +1,6 @@
 package com.robot.platform.device.mqtt;
 
-import cn.iocoder.yudao.framework.ratelimiter.core.redis.RateLimiterRedisDAO;
+import com.robot.platform.framework.ratelimiter.core.redis.RateLimiterRedisDAO;
 import com.robot.platform.device.device.service.DeviceCredentialsRevokedEvent;
 import com.robot.platform.device.mqtt.controller.MqttCallbackRateLimiter;
 import com.robot.platform.device.mqtt.controller.RedisMqttCallbackPreAuthRateLimiter;

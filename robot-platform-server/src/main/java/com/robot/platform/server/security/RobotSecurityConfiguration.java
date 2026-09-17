@@ -1,7 +1,7 @@
 package com.robot.platform.server.security;
 
-import cn.iocoder.yudao.framework.security.config.SecurityFilterChainCustomizer;
-import cn.iocoder.yudao.framework.security.config.SecurityProperties;
+import com.robot.platform.framework.security.config.SecurityFilterChainCustomizer;
+import com.robot.platform.framework.security.config.SecurityProperties;
 import com.robot.platform.device.auth.service.DeviceSessionTokenService;
 import com.robot.platform.security.ApiAudience;
 import com.robot.platform.security.SubjectType;
@@ -26,7 +26,7 @@ public class RobotSecurityConfiguration implements SecurityFilterChainCustomizer
     private final DeviceSessionTokenService sessions;
     private final MemberSessionTokenService memberSessions;
     private final SecurityProperties securityProperties;
-    @Value("${yudao.websocket.path:/ws}")
+    @Value("${robot-platform.websocket.path:/ws}")
     private String webSocketPath;
 
     @Override public void customize(HttpSecurity httpSecurity) {

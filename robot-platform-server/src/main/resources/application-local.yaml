@@ -59,11 +59,11 @@ spring:
           username: ${MYSQL_USER:robot_platform}
           password: ${MYSQL_PASSWORD}
           #          username: sa # SQL Server 连接的示例
-          #          password: Yudao@2024 # SQL Server 连接的示例
+          #          password: RobotPlatform@2024 # SQL Server 连接的示例
           #          username: SYSDBA # DM 连接的示例
           #          password: SYSDBA001 # DM 连接的示例
           #          username: root # OpenGauss 连接的示例
-          #          password: Yudao@2024 # OpenGauss 连接的示例
+          #          password: RobotPlatform@2024 # OpenGauss 连接的示例
           #          username: root # 瀚高 HighGo 连接的示例
           #          password: 123456 # 瀚高 HighGo 连接的示例
         slave: # 模拟从库，可根据自己需要修改
@@ -175,29 +175,29 @@ logging:
     name: ${user.home}/logs/${spring.application.name}.log # 日志文件名，全路径
   level:
     # 配置自己写的 MyBatis Mapper 打印日志
-    cn.iocoder.yudao.module.bpm.dal.mysql: debug
-    cn.iocoder.yudao.module.infra.dal.mysql: debug
-    cn.iocoder.yudao.module.infra.dal.mysql.logger.ApiErrorLogMapper: INFO # 配置 ApiErrorLogMapper 的日志级别为 info，避免和 GlobalExceptionHandler 重复打印
-    cn.iocoder.yudao.module.infra.dal.mysql.job.JobLogMapper: INFO # 配置 JobLogMapper 的日志级别为 info
-    cn.iocoder.yudao.module.infra.dal.mysql.file.FileConfigMapper: INFO # 配置 FileConfigMapper 的日志级别为 info
-    cn.iocoder.yudao.module.pay.dal.mysql: debug
-    cn.iocoder.yudao.module.pay.dal.mysql.notify.PayNotifyTaskMapper: INFO # 配置 PayNotifyTaskMapper 的日志级别为 info
-    cn.iocoder.yudao.module.system.dal.mysql: debug
-    cn.iocoder.yudao.module.system.dal.mysql.sms.SmsChannelMapper: INFO # 配置 SmsChannelMapper 的日志级别为 info
-    cn.iocoder.yudao.module.tool.dal.mysql: debug
-    cn.iocoder.yudao.module.member.dal.mysql: debug
-    cn.iocoder.yudao.module.trade.dal.mysql: debug
-    cn.iocoder.yudao.module.promotion.dal.mysql: debug
-    cn.iocoder.yudao.module.statistics.dal.mysql: debug
-    cn.iocoder.yudao.module.crm.dal.mysql: debug
-    cn.iocoder.yudao.module.erp.dal.mysql: debug
-    cn.iocoder.yudao.module.mes.dal.mysql: debug
-    cn.iocoder.yudao.module.wms.dal.mysql: debug
-    cn.iocoder.yudao.module.iot.dal.mysql: debug
-    cn.iocoder.yudao.module.iot.dal.tdengine: DEBUG
-    cn.iocoder.yudao.module.iot.service.rule: debug
-    cn.iocoder.yudao.module.ai.dal.mysql: debug
-    cn.iocoder.yudao.module.im.dal.mysql: debug
+    com.robot.platform.module.bpm.dal.mysql: debug
+    com.robot.platform.module.infra.dal.mysql: debug
+    com.robot.platform.module.infra.dal.mysql.logger.ApiErrorLogMapper: INFO # 配置 ApiErrorLogMapper 的日志级别为 info，避免和 GlobalExceptionHandler 重复打印
+    com.robot.platform.module.infra.dal.mysql.job.JobLogMapper: INFO # 配置 JobLogMapper 的日志级别为 info
+    com.robot.platform.module.infra.dal.mysql.file.FileConfigMapper: INFO # 配置 FileConfigMapper 的日志级别为 info
+    com.robot.platform.module.pay.dal.mysql: debug
+    com.robot.platform.module.pay.dal.mysql.notify.PayNotifyTaskMapper: INFO # 配置 PayNotifyTaskMapper 的日志级别为 info
+    com.robot.platform.module.system.dal.mysql: debug
+    com.robot.platform.module.system.dal.mysql.sms.SmsChannelMapper: INFO # 配置 SmsChannelMapper 的日志级别为 info
+    com.robot.platform.module.tool.dal.mysql: debug
+    com.robot.platform.module.member.dal.mysql: debug
+    com.robot.platform.module.trade.dal.mysql: debug
+    com.robot.platform.module.promotion.dal.mysql: debug
+    com.robot.platform.module.statistics.dal.mysql: debug
+    com.robot.platform.module.crm.dal.mysql: debug
+    com.robot.platform.module.erp.dal.mysql: debug
+    com.robot.platform.module.mes.dal.mysql: debug
+    com.robot.platform.module.wms.dal.mysql: debug
+    com.robot.platform.module.iot.dal.mysql: debug
+    com.robot.platform.module.iot.dal.tdengine: DEBUG
+    com.robot.platform.module.iot.service.rule: debug
+    com.robot.platform.module.ai.dal.mysql: debug
+    com.robot.platform.module.im.dal.mysql: debug
     org.springframework.context.support.PostProcessorRegistrationDelegate: ERROR # TODO 芋艿：先禁用，Spring Boot 3.X 存在部分错误的 WARN 提示
 
 debug: false
@@ -233,7 +233,7 @@ wx:
 --- #################### 芋道相关配置 ####################
 
 # 芋道配置项，设置当前项目所有自定义的配置
-yudao:
+robot-platform:
   captcha:
     enable: false # 本地环境，暂时关闭图片验证码，方便登录等接口的测试；
   security:

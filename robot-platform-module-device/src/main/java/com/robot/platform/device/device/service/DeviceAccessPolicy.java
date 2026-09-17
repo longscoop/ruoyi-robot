@@ -1,6 +1,6 @@
 package com.robot.platform.device.device.service;
 
-import cn.iocoder.yudao.framework.security.core.service.SecurityFrameworkService;
+import com.robot.platform.framework.security.core.service.SecurityFrameworkService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 

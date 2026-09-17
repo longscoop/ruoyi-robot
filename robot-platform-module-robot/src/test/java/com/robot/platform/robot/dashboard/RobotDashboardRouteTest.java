@@ -1,7 +1,7 @@
 package com.robot.platform.robot.dashboard;
 
-import cn.iocoder.yudao.framework.web.config.WebProperties;
-import cn.iocoder.yudao.framework.web.config.YudaoWebAutoConfiguration;
+import com.robot.platform.framework.web.config.WebProperties;
+import com.robot.platform.framework.web.config.RobotPlatformWebAutoConfiguration;
 import com.robot.platform.robot.dashboard.controller.admin.RobotDashboardController;
 import com.robot.platform.robot.dashboard.service.RobotDashboardService;
 import org.junit.jupiter.api.Test;
@@ -18,7 +18,7 @@ class RobotDashboardRouteTest {
     @Test
     void exposesSingleAdminPrefixRatherThanDoublePrefix() {
         WebProperties properties = new WebProperties();
-        RequestMappingHandlerMapping mapping = (RequestMappingHandlerMapping) new YudaoWebAutoConfiguration()
+        RequestMappingHandlerMapping mapping = (RequestMappingHandlerMapping) new RobotPlatformWebAutoConfiguration()
                 .webMvcRegistrations(properties).getRequestMappingHandlerMapping();
         StaticApplicationContext context = new StaticApplicationContext();
         context.getBeanFactory().registerSingleton("robotDashboardController",

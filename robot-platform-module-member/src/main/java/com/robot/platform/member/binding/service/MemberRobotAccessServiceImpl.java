@@ -5,7 +5,7 @@ import com.robot.platform.member.binding.dal.mysql.MemberRobotBindingMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import static cn.iocoder.yudao.framework.common.exception.util.ServiceExceptionUtil.exception;
+import static com.robot.platform.framework.common.exception.util.ServiceExceptionUtil.exception;
 import static com.robot.platform.member.member.enums.MemberErrorCodeConstants.MEMBER_ROBOT_ACCESS_DENIED;
 
 /** Access is decided from the complete tenant/member/robot binding key, never a robot id alone. */

@@ -13,7 +13,7 @@
         locationX +
         '&name=' +
         label +
-        '&ref=yudao'
+        '&ref=robot-platform'
       "
     >
       <el-col>

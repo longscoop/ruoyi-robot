@@ -1,6 +1,6 @@
 package com.robot.platform.robot.mission;
 
-import cn.iocoder.yudao.framework.tenant.core.context.TenantContextHolder;
+import com.robot.platform.framework.tenant.core.context.TenantContextHolder;
 import com.robot.platform.robot.command.outbox.dal.dataobject.RobotCommandOutboxDO;
 import com.robot.platform.robot.mission.service.MissionCommandDeliveryFailureHandler;
 import com.robot.platform.robot.mission.service.MissionService;

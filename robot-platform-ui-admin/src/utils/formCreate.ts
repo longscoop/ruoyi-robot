@@ -7,7 +7,7 @@ import formCreate from '@form-create/element-ui'
 /** 编码表单 Conf */
 export const encodeConf = (designerRef: object) => {
   // @ts-ignore
-  // 关联案例：https://gitee.com/yudaocode/yudao-ui-admin-vue3/pulls/834/
+  // 关联案例：上游 pull request 834。
   return formCreate.toJson(designerRef.value.getOption())
 }
 

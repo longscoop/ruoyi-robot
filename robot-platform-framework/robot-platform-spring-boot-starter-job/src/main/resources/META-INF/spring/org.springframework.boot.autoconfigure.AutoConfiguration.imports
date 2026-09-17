@@ -1,0 +1,2 @@
+com.robot.platform.framework.quartz.config.RobotPlatformQuartzAutoConfiguration
+com.robot.platform.framework.quartz.config.RobotPlatformAsyncAutoConfiguration

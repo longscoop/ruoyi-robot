@@ -1,6 +1,6 @@
 package com.robot.platform.member.binding.service;
 
-import cn.iocoder.yudao.framework.tenant.core.context.TenantContextHolder;
+import com.robot.platform.framework.tenant.core.context.TenantContextHolder;
 import com.robot.platform.member.binding.dal.dataobject.MemberRobotBindingDO;
 import com.robot.platform.member.binding.dal.mysql.MemberRobotBindingMapper;
 import com.robot.platform.member.member.dal.mysql.MemberMapper;
@@ -10,7 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 
-import static cn.iocoder.yudao.framework.common.exception.util.ServiceExceptionUtil.exception;
+import static com.robot.platform.framework.common.exception.util.ServiceExceptionUtil.exception;
 import static com.robot.platform.member.member.enums.MemberErrorCodeConstants.*;
 
 /** Admin-managed grants are idempotent and always scoped to the current tenant. */

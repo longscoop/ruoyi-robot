@@ -1,7 +1,7 @@
 package com.robot.platform.device.device.dal.mysql;
 
-import cn.iocoder.yudao.framework.mybatis.core.mapper.BaseMapperX;
-import cn.iocoder.yudao.framework.mybatis.core.query.LambdaQueryWrapperX;
+import com.robot.platform.framework.mybatis.core.mapper.BaseMapperX;
+import com.robot.platform.framework.mybatis.core.query.LambdaQueryWrapperX;
 import com.robot.platform.device.device.dal.dataobject.DeviceDO;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;

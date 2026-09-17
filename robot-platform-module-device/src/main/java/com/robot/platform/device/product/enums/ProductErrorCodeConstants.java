@@ -1,6 +1,6 @@
 package com.robot.platform.device.product.enums;
 
-import cn.iocoder.yudao.framework.common.exception.ErrorCode;
+import com.robot.platform.framework.common.exception.ErrorCode;
 
 /** Product-domain errors use the robot platform reserved range. */
 public interface ProductErrorCodeConstants {

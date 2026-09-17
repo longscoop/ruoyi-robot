@@ -1,6 +1,6 @@
 package com.robot.platform.robot.command.gateway;
 
-import cn.iocoder.yudao.framework.common.util.json.JsonUtils;
+import com.robot.platform.framework.common.util.json.JsonUtils;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.robot.platform.device.device.dal.dataobject.DeviceDO;
 import com.robot.platform.device.device.dal.mysql.DeviceMapper;

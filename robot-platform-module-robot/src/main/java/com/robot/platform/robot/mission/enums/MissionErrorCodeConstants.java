@@ -1,6 +1,6 @@
 package com.robot.platform.robot.mission.enums;
 
-import cn.iocoder.yudao.framework.common.exception.ErrorCode;
+import com.robot.platform.framework.common.exception.ErrorCode;
 
 /** Mission errors remain stable for Admin, App and later device message handlers. */
 public interface MissionErrorCodeConstants {

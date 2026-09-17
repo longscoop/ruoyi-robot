@@ -1,6 +1,6 @@
 package com.robot.platform.device.mqtt.controller;
 
-import cn.iocoder.yudao.framework.tenant.core.aop.TenantIgnore;
+import com.robot.platform.framework.tenant.core.aop.TenantIgnore;
 import com.robot.platform.device.mqtt.service.DeviceMqttAuthenticationService;
 import com.robot.platform.device.mqtt.service.DeviceTopicAuthorizationService;
 import com.robot.platform.mqtt.MqttAuthorizationAction;

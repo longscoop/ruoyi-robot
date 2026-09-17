@@ -1,6 +1,6 @@
 package com.robot.platform.robot.status.job;
 
-import cn.iocoder.yudao.framework.tenant.core.util.TenantUtils;
+import com.robot.platform.framework.tenant.core.util.TenantUtils;
 import com.robot.platform.robot.robot.dal.dataobject.RobotDO;
 import com.robot.platform.robot.robot.dal.mysql.RobotMapper;
 import com.robot.platform.robot.robot.enums.RobotOnlineStatus;

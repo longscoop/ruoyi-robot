@@ -1,6 +1,6 @@
 package com.robot.platform.robot.robot.dal.mysql;
 
-import cn.iocoder.yudao.framework.mybatis.core.mapper.BaseMapperX;
+import com.robot.platform.framework.mybatis.core.mapper.BaseMapperX;
 import com.robot.platform.robot.robot.dal.dataobject.RobotCapabilityDO;
 import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Mapper;

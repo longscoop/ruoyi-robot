@@ -1,6 +1,6 @@
 package com.robot.platform.integration;
 
-import cn.iocoder.yudao.framework.tenant.core.util.TenantUtils;
+import com.robot.platform.framework.tenant.core.util.TenantUtils;
 import com.robot.platform.device.device.dal.dataobject.DeviceDO;
 import com.robot.platform.device.device.dal.mysql.DeviceMapper;
 import com.robot.platform.device.device.service.TenantNamespaceResolver;

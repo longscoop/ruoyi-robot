@@ -1,7 +1,7 @@
 package com.robot.platform.integration;
 
-import cn.iocoder.yudao.framework.common.exception.ServiceException;
-import cn.iocoder.yudao.framework.tenant.core.context.TenantContextHolder;
+import com.robot.platform.framework.common.exception.ServiceException;
+import com.robot.platform.framework.tenant.core.context.TenantContextHolder;
 import com.robot.platform.device.product.dal.dataobject.ProductDO;
 import com.robot.platform.device.product.dal.mysql.ProductMapper;
 import com.robot.platform.device.product.service.ProductAccessPolicy;

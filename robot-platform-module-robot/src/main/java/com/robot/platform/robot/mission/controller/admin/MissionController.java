@@ -1,7 +1,7 @@
 package com.robot.platform.robot.mission.controller.admin;
 
-import cn.iocoder.yudao.framework.common.pojo.CommonResult;
-import cn.iocoder.yudao.framework.common.pojo.PageResult;
+import com.robot.platform.framework.common.pojo.CommonResult;
+import com.robot.platform.framework.common.pojo.PageResult;
 import com.robot.platform.robot.mission.controller.admin.vo.*;
 import com.robot.platform.robot.mission.service.MissionService;
 import com.robot.platform.robot.mission.service.command.MissionActionCommand;
@@ -19,8 +19,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-import static cn.iocoder.yudao.framework.common.pojo.CommonResult.success;
-import static cn.iocoder.yudao.framework.security.core.util.SecurityFrameworkUtils.getLoginUserId;
+import static com.robot.platform.framework.common.pojo.CommonResult.success;
+import static com.robot.platform.framework.security.core.util.SecurityFrameworkUtils.getLoginUserId;
 
 /** Admin routes depend only on MissionService, preserving mapper and transport boundaries. */
 @Tag(name = "管理后台 - 任务")

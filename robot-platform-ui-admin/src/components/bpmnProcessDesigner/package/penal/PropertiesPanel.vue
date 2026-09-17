@@ -71,7 +71,7 @@
       <!-- 新增的时间事件配置项 -->
       <el-collapse-item v-if="elementType === 'IntermediateCatchEvent'" name="timeEvent">
         <template #title><Icon icon="ep:timer" />时间事件</template>
-        <!-- 相关 issue：https://gitee.com/yudaocode/yudao-ui-admin-vue3/issues/ICNRW2 -->
+        <!-- 相关上游 issue ICNRW2；来源见固定版本的溯源记录。 -->
         <TimeEventConfig :businessObject="elementBusinessObject" :key="elementId" />
       </el-collapse-item>
     </el-collapse>

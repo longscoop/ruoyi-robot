@@ -1,7 +1,7 @@
 package com.robot.platform.device.auth.controller.device;
 
-import cn.iocoder.yudao.framework.common.pojo.CommonResult;
-import cn.iocoder.yudao.framework.tenant.core.aop.TenantIgnore;
+import com.robot.platform.framework.common.pojo.CommonResult;
+import com.robot.platform.framework.tenant.core.aop.TenantIgnore;
 import com.robot.platform.device.auth.controller.device.vo.DeviceTokenReqVO;
 import com.robot.platform.device.auth.controller.device.vo.DeviceTokenRespVO;
 import com.robot.platform.device.auth.DeviceTokenAuthenticationException;
@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
-import static cn.iocoder.yudao.framework.common.pojo.CommonResult.success;
+import static com.robot.platform.framework.common.pojo.CommonResult.success;
 
 /** Device login is the sole anonymous DEVICE route; tenant identity is resolved from the authenticated device. */
 @RestController

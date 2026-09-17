@@ -1,6 +1,6 @@
 package com.robot.platform.robot.robot.service;
 
-import cn.iocoder.yudao.framework.common.pojo.PageResult;
+import com.robot.platform.framework.common.pojo.PageResult;
 import com.robot.platform.device.spi.RobotProvisionCommand;
 import com.robot.platform.robot.robot.service.command.RobotPageQuery;
 import com.robot.platform.robot.robot.service.command.RobotUpdateCommand;

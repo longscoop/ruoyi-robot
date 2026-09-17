@@ -4,8 +4,8 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>cn.iocoder.boot</groupId>
-        <artifactId>yudao</artifactId>
+        <groupId>com.robot.platform</groupId>
+        <artifactId>robot-platform</artifactId>
         <version>${revision}</version>
     </parent>
     <artifactId>robot-platform-module-member</artifactId>
@@ -15,20 +15,20 @@
 
     <dependencies>
         <dependency>
-            <groupId>cn.iocoder.boot</groupId>
+            <groupId>com.robot.platform</groupId>
             <artifactId>robot-platform-module-tenant</artifactId>
         </dependency>
         <dependency>
-            <groupId>cn.iocoder.boot</groupId>
+            <groupId>com.robot.platform</groupId>
             <artifactId>robot-platform-framework-security</artifactId>
         </dependency>
         <dependency>
-            <groupId>cn.iocoder.boot</groupId>
-            <artifactId>yudao-spring-boot-starter-mybatis</artifactId>
+            <groupId>com.robot.platform</groupId>
+            <artifactId>robot-platform-spring-boot-starter-mybatis</artifactId>
         </dependency>
         <dependency>
-            <groupId>cn.iocoder.boot</groupId>
-            <artifactId>yudao-spring-boot-starter-redis</artifactId>
+            <groupId>com.robot.platform</groupId>
+            <artifactId>robot-platform-spring-boot-starter-redis</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>

@@ -1,7 +1,7 @@
 package com.robot.platform.tenant.quota.controller.admin;
 
-import cn.iocoder.yudao.framework.common.pojo.CommonResult;
-import cn.iocoder.yudao.framework.tenant.core.context.TenantContextHolder;
+import com.robot.platform.framework.common.pojo.CommonResult;
+import com.robot.platform.framework.tenant.core.context.TenantContextHolder;
 import com.robot.platform.tenant.quota.controller.admin.vo.TenantQuotaRespVO;
 import com.robot.platform.tenant.quota.controller.admin.vo.TenantQuotaUpdateReqVO;
 import com.robot.platform.tenant.quota.dal.dataobject.TenantUsageDO;
@@ -15,7 +15,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
-import static cn.iocoder.yudao.framework.common.pojo.CommonResult.success;
+import static com.robot.platform.framework.common.pojo.CommonResult.success;
 
 @Tag(name = "管理后台 - 租户机器人配额")
 @RestController

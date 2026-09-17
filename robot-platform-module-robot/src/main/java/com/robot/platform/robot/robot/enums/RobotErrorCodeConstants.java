@@ -1,6 +1,6 @@
 package com.robot.platform.robot.robot.enums;
 
-import cn.iocoder.yudao.framework.common.exception.ErrorCode;
+import com.robot.platform.framework.common.exception.ErrorCode;
 
 /** Error codes for tenant-owned robot resources. */
 public interface RobotErrorCodeConstants {

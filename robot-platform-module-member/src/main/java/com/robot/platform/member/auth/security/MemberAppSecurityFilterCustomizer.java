@@ -1,6 +1,6 @@
 package com.robot.platform.member.auth.security;
 
-import cn.iocoder.yudao.framework.security.config.SecurityFilterChainCustomizer;
+import com.robot.platform.framework.security.config.SecurityFilterChainCustomizer;
 import com.robot.platform.member.auth.service.MemberSessionTokenService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;

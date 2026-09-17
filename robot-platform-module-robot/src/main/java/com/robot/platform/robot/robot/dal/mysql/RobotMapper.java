@@ -1,8 +1,8 @@
 package com.robot.platform.robot.robot.dal.mysql;
 
-import cn.iocoder.yudao.framework.common.pojo.PageResult;
-import cn.iocoder.yudao.framework.mybatis.core.mapper.BaseMapperX;
-import cn.iocoder.yudao.framework.mybatis.core.query.LambdaQueryWrapperX;
+import com.robot.platform.framework.common.pojo.PageResult;
+import com.robot.platform.framework.mybatis.core.mapper.BaseMapperX;
+import com.robot.platform.framework.mybatis.core.query.LambdaQueryWrapperX;
 import com.robot.platform.robot.robot.dal.dataobject.RobotDO;
 import com.robot.platform.robot.robot.service.command.RobotPageQuery;
 import org.apache.ibatis.annotations.Delete;
@@ -10,7 +10,7 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 import org.apache.ibatis.annotations.Param;
-import cn.iocoder.yudao.framework.tenant.core.aop.TenantIgnore;
+import com.robot.platform.framework.tenant.core.aop.TenantIgnore;
 
 @Mapper
 public interface RobotMapper extends BaseMapperX<RobotDO> {

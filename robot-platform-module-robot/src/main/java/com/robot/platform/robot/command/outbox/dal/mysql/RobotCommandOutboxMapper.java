@@ -1,7 +1,7 @@
 package com.robot.platform.robot.command.outbox.dal.mysql;
 
-import cn.iocoder.yudao.framework.mybatis.core.mapper.BaseMapperX;
-import cn.iocoder.yudao.framework.tenant.core.aop.TenantIgnore;
+import com.robot.platform.framework.mybatis.core.mapper.BaseMapperX;
+import com.robot.platform.framework.tenant.core.aop.TenantIgnore;
 import com.robot.platform.robot.command.outbox.dal.dataobject.RobotCommandOutboxDO;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
