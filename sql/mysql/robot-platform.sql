@@ -336,3 +336,98 @@ FROM (
   SELECT 910151, '配额修改', 'tenant:quota:update', 1, 910040
 ) m
 WHERE NOT EXISTS (SELECT 1 FROM `system_menu` existing WHERE existing.id = m.id);
+
+-- Realtime Agent Core Task 2: provider/model/prompt/agent persistence.
+CREATE TABLE IF NOT EXISTS `ai_model_provider` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `tenant_id` bigint NOT NULL COMMENT '所属租户',
+  `name` varchar(128) NOT NULL COMMENT '供应商名称',
+  `code` varchar(64) NOT NULL COMMENT '租户内供应商编码',
+  `provider_type` varchar(32) NOT NULL COMMENT 'QWEN/DEEPSEEK/DOUBAO',
+  `base_url` varchar(512) DEFAULT NULL COMMENT '供应商 API 地址',
+  `api_key_ciphertext` varchar(2048) DEFAULT NULL COMMENT 'API Key 加密密文',
+  `config_json` json DEFAULT NULL COMMENT '供应商扩展配置',
+  `status` varchar(16) NOT NULL DEFAULT 'ENABLED' COMMENT 'ENABLED/DISABLED',
+  `creator` varchar(64) DEFAULT '', `create_time` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updater` varchar(64) DEFAULT '', `update_time` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted` bit(1) NOT NULL DEFAULT b'0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_ai_provider_tenant_code` (`tenant_id`,`code`),
+  KEY `idx_ai_provider_tenant_status` (`tenant_id`,`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='AI 模型供应商';
+
+CREATE TABLE IF NOT EXISTS `ai_model` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `tenant_id` bigint NOT NULL COMMENT '所属租户',
+  `provider_id` bigint NOT NULL COMMENT '模型供应商',
+  `name` varchar(128) NOT NULL COMMENT '模型名称',
+  `model_code` varchar(128) NOT NULL COMMENT '供应商模型编码',
+  `model_type` varchar(32) NOT NULL COMMENT 'CHAT/REALTIME_S2S/ASR/TTS/EMBEDDING',
+  `capabilities_json` json DEFAULT NULL COMMENT '模型能力声明',
+  `config_json` json DEFAULT NULL COMMENT '模型扩展配置',
+  `status` varchar(16) NOT NULL DEFAULT 'ENABLED' COMMENT 'ENABLED/DISABLED',
+  `creator` varchar(64) DEFAULT '', `create_time` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updater` varchar(64) DEFAULT '', `update_time` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted` bit(1) NOT NULL DEFAULT b'0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_ai_model_tenant_provider_code` (`tenant_id`,`provider_id`,`model_code`),
+  KEY `idx_ai_model_tenant_type_status` (`tenant_id`,`model_type`,`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='AI 模型';
+
+CREATE TABLE IF NOT EXISTS `ai_prompt` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `tenant_id` bigint NOT NULL COMMENT '所属租户',
+  `name` varchar(128) NOT NULL COMMENT 'Prompt 名称',
+  `code` varchar(64) NOT NULL COMMENT 'Prompt 编码',
+  `version` int NOT NULL COMMENT 'Prompt 版本',
+  `content` text NOT NULL COMMENT 'Prompt 内容',
+  `status` varchar(16) NOT NULL DEFAULT 'ENABLED' COMMENT 'ENABLED/DISABLED',
+  `creator` varchar(64) DEFAULT '', `create_time` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updater` varchar(64) DEFAULT '', `update_time` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted` bit(1) NOT NULL DEFAULT b'0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_ai_prompt_tenant_code_version` (`tenant_id`,`code`,`version`),
+  KEY `idx_ai_prompt_tenant_code_status` (`tenant_id`,`code`,`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='AI Prompt';
+
+CREATE TABLE IF NOT EXISTS `ai_agent` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `tenant_id` bigint NOT NULL COMMENT '所属租户',
+  `name` varchar(128) NOT NULL COMMENT '智能体名称',
+  `code` varchar(64) NOT NULL COMMENT '智能体编码',
+  `description` varchar(1000) DEFAULT NULL COMMENT '智能体描述',
+  `system_prompt_id` bigint NOT NULL COMMENT '系统 Prompt',
+  `conversation_model_id` bigint DEFAULT NULL COMMENT '文本/级联聊天模型',
+  `realtime_model_id` bigint DEFAULT NULL COMMENT '原生实时语音模型',
+  `asr_model_id` bigint DEFAULT NULL COMMENT '级联 ASR 模型',
+  `tts_model_id` bigint DEFAULT NULL COMMENT '级联 TTS 模型',
+  `realtime_mode` varchar(16) NOT NULL DEFAULT 'AUTO' COMMENT 'NATIVE/CASCADE/AUTO',
+  `memory_mode` varchar(16) NOT NULL DEFAULT 'NONE' COMMENT 'NONE/SESSION/LONG_TERM',
+  `memory_read_enabled` tinyint NOT NULL DEFAULT 0 COMMENT '是否读取记忆',
+  `memory_write_enabled` tinyint NOT NULL DEFAULT 0 COMMENT '是否写入记忆',
+  `knowledge_enabled` tinyint NOT NULL DEFAULT 0 COMMENT '是否启用知识库',
+  `voice_config_json` json DEFAULT NULL COMMENT '语音配置',
+  `status` varchar(16) NOT NULL DEFAULT 'ENABLED' COMMENT 'ENABLED/DISABLED',
+  `creator` varchar(64) DEFAULT '', `create_time` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updater` varchar(64) DEFAULT '', `update_time` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted` bit(1) NOT NULL DEFAULT b'0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_ai_agent_tenant_code` (`tenant_id`,`code`),
+  KEY `idx_ai_agent_tenant_status` (`tenant_id`,`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='AI 智能体';
+
+CREATE TABLE IF NOT EXISTS `ai_agent_robot` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `tenant_id` bigint NOT NULL COMMENT '所属租户',
+  `agent_id` bigint NOT NULL COMMENT '智能体',
+  `robot_id` bigint NOT NULL COMMENT '机器人',
+  `is_default` tinyint NOT NULL DEFAULT 0 COMMENT '是否默认智能体',
+  `status` varchar(16) NOT NULL DEFAULT 'ENABLED' COMMENT 'ENABLED/DISABLED',
+  `creator` varchar(64) DEFAULT '', `create_time` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updater` varchar(64) DEFAULT '', `update_time` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted` bit(1) NOT NULL DEFAULT b'0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_ai_agent_robot` (`tenant_id`,`agent_id`,`robot_id`),
+  KEY `idx_ai_agent_robot_default` (`tenant_id`,`robot_id`,`is_default`,`status`),
+  KEY `idx_ai_agent_robot_agent` (`tenant_id`,`agent_id`,`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='AI 智能体与机器人绑定';
