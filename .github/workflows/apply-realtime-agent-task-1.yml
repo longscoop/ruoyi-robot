@@ -1,0 +1,116 @@
+name: Apply Realtime Agent Task 1
+
+on:
+  push:
+    branches:
+      - tdd/realtime-agent-task-1
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.event.head_commit.message == 'chore(tdd): apply task 1 implementation'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      - name: Apply minimal Task 1 implementation
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          root = Path('pom.xml')
+          text = root.read_text()
+          old = '<!--        <module>robot-platform-module-ai</module>-->'
+          new = '        <module>robot-platform-module-ai</module>'
+          if old not in text:
+              raise SystemExit('root pom AI module marker not found')
+          root.write_text(text.replace(old, new, 1))
+
+          server = Path('robot-platform-server/pom.xml')
+          text = server.read_text()
+          old = '''        <!-- AI 大模型相关模块。默认注释，保证编译速度 -->\n<!--        <dependency>-->\n<!--            <groupId>com.robot.platform</groupId>-->\n<!--            <artifactId>robot-platform-module-ai</artifactId>-->\n<!--            <version>${revision}</version>-->\n<!--        </dependency>-->'''
+          new = '''        <!-- AI 大模型相关模块 -->\n        <dependency>\n            <groupId>com.robot.platform</groupId>\n            <artifactId>robot-platform-module-ai</artifactId>\n            <version>${revision}</version>\n        </dependency>'''
+          if old not in text:
+              raise SystemExit('server pom AI dependency marker not found')
+          server.write_text(text.replace(old, new, 1))
+          PY
+
+          mkdir -p robot-platform-module-ai/src/main/java/com/robot/platform/ai
+          cat > robot-platform-module-ai/pom.xml <<'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <project xmlns="http://maven.apache.org/POM/4.0.0"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+              <modelVersion>4.0.0</modelVersion>
+              <parent>
+                  <groupId>com.robot.platform</groupId>
+                  <artifactId>robot-platform</artifactId>
+                  <version>${revision}</version>
+              </parent>
+              <artifactId>robot-platform-module-ai</artifactId>
+              <packaging>jar</packaging>
+              <name>${project.artifactId}</name>
+              <description>Robot platform AI agent module</description>
+
+              <dependencies>
+                  <dependency>
+                      <groupId>com.robot.platform</groupId>
+                      <artifactId>robot-platform-module-tenant</artifactId>
+                  </dependency>
+                  <dependency>
+                      <groupId>com.robot.platform</groupId>
+                      <artifactId>robot-platform-module-member</artifactId>
+                  </dependency>
+                  <dependency>
+                      <groupId>com.robot.platform</groupId>
+                      <artifactId>robot-platform-module-device</artifactId>
+                  </dependency>
+                  <dependency>
+                      <groupId>com.robot.platform</groupId>
+                      <artifactId>robot-platform-module-robot</artifactId>
+                  </dependency>
+                  <dependency>
+                      <groupId>com.robot.platform</groupId>
+                      <artifactId>robot-platform-framework-security</artifactId>
+                  </dependency>
+                  <dependency>
+                      <groupId>com.robot.platform</groupId>
+                      <artifactId>robot-platform-spring-boot-starter-mybatis</artifactId>
+                  </dependency>
+                  <dependency>
+                      <groupId>org.springframework.boot</groupId>
+                      <artifactId>spring-boot-starter-test</artifactId>
+                      <scope>test</scope>
+                  </dependency>
+              </dependencies>
+          </project>
+          EOF
+
+          cat > robot-platform-module-ai/src/main/java/com/robot/platform/ai/AiModuleConfiguration.java <<'EOF'
+          package com.robot.platform.ai;
+
+          import org.springframework.context.annotation.Configuration;
+
+          @Configuration(proxyBeanMethods = false)
+          public class AiModuleConfiguration {
+          }
+          EOF
+      - name: Run Task 1 smoke test
+        run: mvn -pl robot-platform-module-ai -am -Dtest=AiModuleSmokeTest test
+      - name: Commit green Task 1 tree
+        shell: bash
+        run: |
+          git config user.name 'Smith'
+          git config user.email 'qilong628@163.com'
+          git add pom.xml robot-platform-server/pom.xml robot-platform-module-ai
+          git commit -m 'feat(ai): enable ai module'
+          git push origin HEAD:tdd/realtime-agent-task-1
