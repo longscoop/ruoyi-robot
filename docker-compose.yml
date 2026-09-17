@@ -17,6 +17,7 @@ services:
       - ./sql/mysql/ruoyi-vue-pro.sql:/docker-entrypoint-initdb.d/01-framework.sql:ro
       - ./sql/mysql/quartz.sql:/docker-entrypoint-initdb.d/02-quartz.sql:ro
       - ./sql/mysql/robot-platform.sql:/docker-entrypoint-initdb.d/03-robot.sql:ro
+      - ./sql/mysql/ai-platform.sql:/docker-entrypoint-initdb.d/04-ai.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "MYSQL_PWD=$$MYSQL_PASSWORD mysql -h 127.0.0.1 -u $$MYSQL_USER -D $$MYSQL_DATABASE -e 'SELECT 1'"]
       interval: 5s
