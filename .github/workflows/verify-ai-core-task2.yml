@@ -1,0 +1,22 @@
+name: Verify AI Core Task 2
+
+on:
+  push:
+    branches:
+      - verify/realtime-agent-core-task2
+
+jobs:
+  ai-core-task2:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: temurin
+          cache: maven
+      - name: Install reactor dependencies
+        run: mvn -B -pl robot-platform-module-ai -am -DskipTests install
+      - name: Run Task 2 schema contract
+        run: mvn -B -pl robot-platform-module-ai -Dtest=AiCoreSchemaContractTest test
