@@ -10,6 +10,7 @@ public interface AiAgentRobotBindingService {
     void unbind(long tenantId, long agentId, long robotId);
     void setDefault(long tenantId, long agentId, long robotId);
     List<AiAgentRobotDO> listByRobot(long tenantId, long robotId);
+    List<AiAgentRobotDO> listByAgent(long tenantId, long agentId);
     AiAgentRobotDO getDefault(long tenantId, long robotId);
     AiAgentDO requireDefaultAgent(long tenantId, long robotId);
     AiAgentDO requireAgentForRobot(long tenantId, long robotId, String agentCode);
