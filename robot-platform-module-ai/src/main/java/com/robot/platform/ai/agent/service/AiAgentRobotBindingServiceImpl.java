@@ -82,6 +82,13 @@ public class AiAgentRobotBindingServiceImpl implements AiAgentRobotBindingServic
     }
 
     @Override
+    public List<AiAgentRobotDO> listByAgent(long tenantId, long agentId) {
+        requireCurrentTenant(tenantId);
+        requireAgent(tenantId, agentId);
+        return bindingMapper.selectByAgent(tenantId, agentId);
+    }
+
+    @Override
     public AiAgentRobotDO getDefault(long tenantId, long robotId) {
         requireCurrentTenant(tenantId);
         robotOwnershipVerifier.requireOwnedByTenant(tenantId, robotId);
