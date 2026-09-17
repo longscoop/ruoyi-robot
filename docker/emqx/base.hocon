@@ -1,0 +1,69 @@
+# Local EMQX 5.8.4 baseline. The backend runs on the host at port 48080.
+# Direct EMQX and Compose both take the callback secret from MQTT_CALLBACK_TOKEN. It must be set;
+# a missing expansion leaves callbacks unable to authenticate, which is fail closed.
+# These callbacks are a separate service-authenticated boundary from all user APIs.
+listeners.tcp.default.bind = "0.0.0.0:1883"
+# EMQX's bundled certificate is for local development only.
+listeners.ssl.default {
+  bind = "0.0.0.0:8883"
+  ssl_options {
+    cacertfile = "${EMQX_ETC_DIR}/certs/cacert.pem"
+    certfile = "${EMQX_ETC_DIR}/certs/cert.pem"
+    keyfile = "${EMQX_ETC_DIR}/certs/key.pem"
+  }
+}
+dashboard.listeners.http.bind = 18083
+
+authentication = [
+  {
+    enable = true
+    mechanism = password_based
+    backend = http
+    method = post
+    url = "http://host.docker.internal:48080/mqtt-api/authenticate"
+    headers {
+      "content-type" = "application/json"
+      "x-mqtt-callback-token" = "${MQTT_CALLBACK_TOKEN}"
+    }
+    body {
+      username = "${username}"
+      password = "${password}"
+      clientid = "${clientid}"
+      peerhost = "${peerhost}"
+    }
+    connect_timeout = 5s
+    request_timeout = 5s
+  }
+]
+
+authorization {
+  no_match = deny
+  deny_action = disconnect
+  cache.enable = false
+  sources = [
+    {
+      enable = true
+      type = http
+      method = post
+      url = "http://host.docker.internal:48080/mqtt-api/authorize"
+      headers {
+        "content-type" = "application/json"
+        "x-mqtt-callback-token" = "${MQTT_CALLBACK_TOKEN}"
+      }
+      body {
+        username = "${username}"
+        clientid = "${clientid}"
+        action = "${action}"
+        topic = "${topic}"
+        qos = "${qos}"
+        retain = "${retain}"
+        client_attrs = {
+          principal_type = "${client_attrs.principal_type}"
+          credential_version = "${client_attrs.credential_version}"
+        }
+      }
+      connect_timeout = 5s
+      request_timeout = 5s
+    }
+  ]
+}

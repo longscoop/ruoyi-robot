@@ -1,0 +1,46 @@
+spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.quartz.QuartzAutoConfiguration
+  boot:
+    admin:
+      client:
+        enabled: false
+  datasource:
+    dynamic:
+      strict: true
+      druid:
+        initial-size: 1
+        min-idle: 1
+        max-active: 5
+  quartz:
+    auto-startup: false
+
+mybatis-plus:
+  global-config:
+    db-config:
+      id-type: AUTO
+
+yudao:
+  security:
+    mock-enable: false
+  captcha:
+    enable: false
+  access-log:
+    enable: false
+  demo: false
+
+justauth:
+  enabled: false
+
+# Upstream eagerly constructs these SDK clients. These non-production identifiers
+# only allow client construction; these tests make no external WeChat requests.
+wx:
+  mp:
+    app-id: integration-test
+  miniapp:
+    appid: integration-test
+
+logging:
+  file:
+    name: target/test-logs/robot-platform.log
