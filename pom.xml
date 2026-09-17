@@ -34,7 +34,7 @@
 <!--        <module>robot-platform-module-fms</module>-->
         <!--        <module>robot-platform-module-im</module>-->
 <!-- 请参考 https://doc.iocoder.cn/ai/build/ 文档，完成 AI 模块的启动！！！ -->
-<!--        <module>robot-platform-module-ai</module>-->
+        <module>robot-platform-module-ai</module>
     </modules>
 
     <name>${project.artifactId}</name>
