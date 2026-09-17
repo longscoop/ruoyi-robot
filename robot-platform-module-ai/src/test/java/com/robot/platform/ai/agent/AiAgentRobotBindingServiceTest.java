@@ -52,6 +52,19 @@ class AiAgentRobotBindingServiceTest {
     }
 
     @Test
+    void resolvesDefaultAgentThroughTenantScopedBinding() {
+        when(bindingMapper.selectDefaultByRobot(1L, 99L))
+                .thenReturn(AiAgentRobotDO.builder().id(9L).tenantId(1L).agentId(7L).robotId(99L)
+                        .isDefault(true).status("ENABLED").build());
+
+        AiAgentDO agent = service.requireDefaultAgent(1L, 99L);
+
+        assertThat(agent.getCode()).isEqualTo("xiaoyou");
+        verify(robotOwnershipVerifier).requireOwnedByTenant(1L, 99L);
+        verify(agentMapper).selectByIdAndTenantId(7L, 1L);
+    }
+
+    @Test
     void requireAgentForRobotRequiresEnabledTenantScopedBinding() {
         AiAgentDO agent = AiAgentDO.builder().id(7L).tenantId(1L).code("xiaoyou").build();
         when(agentMapper.selectByCodeAndTenantId("xiaoyou", 1L)).thenReturn(agent);
