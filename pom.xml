@@ -14,6 +14,7 @@
         <module>robot-platform-module-member</module>
         <module>robot-platform-module-device</module>
         <module>robot-platform-module-robot</module>
+        <module>robot-platform-module-ai</module>
         <!-- Server 主项目 -->
         <module>robot-platform-server</module>
         <!-- 各种 module 拓展 -->
@@ -33,8 +34,6 @@
 <!--        <module>robot-platform-module-hrm</module>-->
 <!--        <module>robot-platform-module-fms</module>-->
         <!--        <module>robot-platform-module-im</module>-->
-<!-- 请参考 https://doc.iocoder.cn/ai/build/ 文档，完成 AI 模块的启动！！！ -->
-<!--        <module>robot-platform-module-ai</module>-->
     </modules>
 
     <name>${project.artifactId}</name>
