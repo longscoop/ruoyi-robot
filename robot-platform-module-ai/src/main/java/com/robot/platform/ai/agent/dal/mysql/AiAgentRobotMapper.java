@@ -20,6 +20,10 @@ public interface AiAgentRobotMapper extends BaseMapperX<AiAgentRobotDO> {
         return selectList(AiAgentRobotDO::getTenantId, tenantId, AiAgentRobotDO::getRobotId, robotId);
     }
 
+    default List<AiAgentRobotDO> selectByAgent(long tenantId, long agentId) {
+        return selectList(AiAgentRobotDO::getTenantId, tenantId, AiAgentRobotDO::getAgentId, agentId);
+    }
+
     default AiAgentRobotDO selectDefaultByRobot(long tenantId, long robotId) {
         return selectOne(new LambdaQueryWrapper<AiAgentRobotDO>()
                 .eq(AiAgentRobotDO::getTenantId, tenantId)
