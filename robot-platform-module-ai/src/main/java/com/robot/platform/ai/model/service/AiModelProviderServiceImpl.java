@@ -63,6 +63,14 @@ public class AiModelProviderServiceImpl implements AiModelProviderService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void delete(long tenantId, long id) {
+        requireCurrentTenant(tenantId);
+        AiModelProviderDO row = requireProvider(tenantId, id);
+        mapper.deleteById(row.getId());
+    }
+
+    @Override
     public AiModelProviderDO get(long tenantId, long id) {
         requireCurrentTenant(tenantId);
         return requireProvider(tenantId, id);
