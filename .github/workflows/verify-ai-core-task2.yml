@@ -16,5 +16,5 @@ jobs:
           java-version: '17'
           distribution: temurin
           cache: maven
-      - name: Run Task 2 schema contract
-        run: mvn -B -pl robot-platform-module-ai -am -Dtest=AiCoreSchemaContractTest -Dsurefire.failIfNoSpecifiedTests=false test
+      - name: Run full AI module tests
+        run: mvn -B -pl robot-platform-module-ai -am test
