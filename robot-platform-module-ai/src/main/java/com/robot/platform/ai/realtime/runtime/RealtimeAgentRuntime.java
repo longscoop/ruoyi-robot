@@ -4,9 +4,15 @@ import com.robot.platform.ai.agent.dal.dataobject.AiAgentDO;
 import com.robot.platform.ai.agent.service.AiAgentConfig;
 import com.robot.platform.ai.agent.service.AiAgentRobotBindingService;
 import com.robot.platform.ai.agent.service.AiAgentService;
+import com.robot.platform.ai.model.client.ModelClientRegistry;
+import com.robot.platform.ai.model.client.ResolvedModel;
+import com.robot.platform.ai.model.client.RealtimeProviderSession;
+import com.robot.platform.ai.model.client.RealtimeVoiceClient;
+import com.robot.platform.ai.model.client.event.ProviderEvent;
 import com.robot.platform.ai.realtime.gateway.AiRealtimeWebSocketHandler;
 import com.robot.platform.ai.realtime.protocol.RealtimeAudioFormat;
 import com.robot.platform.ai.realtime.protocol.RealtimeClientEvent;
+import com.robot.platform.ai.realtime.protocol.RealtimeServerEvent;
 import com.robot.platform.device.auth.service.DeviceSession;
 import com.robot.platform.framework.tenant.core.context.TenantContextHolder;
 import com.robot.platform.security.ApiAudience;
@@ -17,6 +23,9 @@ import java.util.Objects;
 import java.util.function.Supplier;
 
 public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime {
+
+    private static final RealtimeAudioFormat PROVIDER_OUTPUT_AUDIO =
+            new RealtimeAudioFormat("PCM_S16LE", 24000, 1);
 
     public enum State {
         CONNECTING,
@@ -29,10 +38,13 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
     public record CloseReason(int code, String reason) {
     }
 
+    private final String sessionId;
     private final DeviceSession deviceSession;
     private final AiAgentRobotBindingService bindingService;
     private final AiAgentService agentService;
     private final RealtimeModelRouter router;
+    private final ResolvedModelResolver modelResolver;
+    private final ModelClientRegistry clientRegistry;
 
     private State state = State.CONNECTING;
     private AiAgentConfig agentConfig;
@@ -40,15 +52,44 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
     private RealtimeClientEvent.CandidateIdentity candidateIdentity;
     private RealtimeAudioFormat audioFormat;
     private CloseReason closeReason;
+    private RealtimeRuntimeOutput output;
+    private RealtimeProviderSession providerSession;
+    private long turnSequence;
+    private String currentTurnId;
+    private boolean assistantAudioStarted;
 
     public RealtimeAgentRuntime(DeviceSession deviceSession,
                                 AiAgentRobotBindingService bindingService,
                                 AiAgentService agentService,
                                 RealtimeModelRouter router) {
+        this("standalone", deviceSession, bindingService, agentService, router, null, null);
+    }
+
+    public RealtimeAgentRuntime(String sessionId,
+                                DeviceSession deviceSession,
+                                AiAgentRobotBindingService bindingService,
+                                AiAgentService agentService,
+                                RealtimeModelRouter router,
+                                ResolvedModelResolver modelResolver,
+                                ModelClientRegistry clientRegistry) {
+        if (sessionId == null || sessionId.isBlank()) {
+            throw new IllegalArgumentException("sessionId must not be blank");
+        }
+        this.sessionId = sessionId;
         this.deviceSession = requireTrustedDeviceSession(deviceSession);
         this.bindingService = Objects.requireNonNull(bindingService, "bindingService");
         this.agentService = Objects.requireNonNull(agentService, "agentService");
         this.router = Objects.requireNonNull(router, "router");
+        this.modelResolver = modelResolver;
+        this.clientRegistry = clientRegistry;
+    }
+
+    public synchronized void attachOutput(RealtimeRuntimeOutput output) {
+        Objects.requireNonNull(output, "output");
+        if (this.output != null) {
+            throw new IllegalStateException("Realtime runtime output is already attached");
+        }
+        this.output = output;
     }
 
     @Override
@@ -65,11 +106,11 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
             return;
         }
         if (event instanceof RealtimeClientEvent.SpeechStartedEvent) {
-            transition(State.READY, State.USER_SPEAKING, "input.speech_started");
+            speechStarted();
             return;
         }
         if (event instanceof RealtimeClientEvent.SpeechStoppedEvent) {
-            transition(State.USER_SPEAKING, State.ASSISTANT_RESPONDING, "input.speech_stopped");
+            speechStopped();
             return;
         }
         if (event instanceof RealtimeClientEvent.SessionCloseEvent sessionClose) {
@@ -90,8 +131,9 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
         if (pcm == null) {
             throw new IllegalArgumentException("PCM buffer must not be null");
         }
-        // Transport ownership remains with the caller. Provider forwarding is added in later runtime tasks.
-        pcm.remaining();
+        if (providerSession != null) {
+            providerSession.appendAudio(pcm.asReadOnlyBuffer());
+        }
     }
 
     public synchronized void completeAssistantResponse() {
@@ -129,6 +171,13 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
         }
         closeReason = reason == null ? new CloseReason(1011, "UNKNOWN") : reason;
         state = State.CLOSED;
+        if (providerSession != null) {
+            providerSession.close();
+            providerSession = null;
+        }
+        if (output != null) {
+            output.sendEvent(new RealtimeServerEvent.SessionClosedEvent(sessionId, closeReason.reason()));
+        }
     }
 
     public synchronized State state() {
@@ -152,7 +201,6 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
     }
 
     public Long effectiveMemberId() {
-        // Candidate identity is intentionally untrusted until Plan 3 validation is available.
         return null;
     }
 
@@ -192,7 +240,91 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
         candidateIdentity = event.identity();
         audioFormat = event.audio();
         route = router.route(resolved, RealtimeModelRouter.ModelCapabilities.configured(resolved));
+        if (route.mode() == RealtimeRoute.Mode.NATIVE && modelResolver != null && clientRegistry != null) {
+            openNativeProvider();
+        }
         state = State.READY;
+        if (output != null) {
+            output.sendEvent(new RealtimeServerEvent.SessionCreatedEvent(sessionId, route.mode().name()));
+        }
+    }
+
+    private void openNativeProvider() {
+        Long modelId = route.realtimeModelId();
+        if (modelId == null) {
+            throw new IllegalStateException("Native route is missing realtime model id");
+        }
+        ResolvedModel resolvedModel = withTrustedTenant(
+                () -> modelResolver.resolve(deviceSession.tenantId(), modelId));
+        if (resolvedModel.modelId() != modelId) {
+            throw new IllegalStateException("Resolved model does not match realtime route");
+        }
+        resolvedModel = resolvedModel.withRealtimeSession(agentConfig.systemPrompt(), agentConfig.voiceConfigJson());
+        RealtimeVoiceClient client = clientRegistry.requireRealtimeVoice(resolvedModel.providerType());
+        providerSession = client.open(resolvedModel, this::onProviderEvent);
+    }
+
+    private void speechStarted() {
+        requireState(State.READY, "input.speech_started");
+        currentTurnId = "turn-" + (++turnSequence);
+        assistantAudioStarted = false;
+        state = State.USER_SPEAKING;
+        if (providerSession != null) {
+            providerSession.speechStarted();
+        }
+    }
+
+    private void speechStopped() {
+        requireState(State.USER_SPEAKING, "input.speech_stopped");
+        state = State.ASSISTANT_RESPONDING;
+        if (providerSession != null) {
+            providerSession.speechStopped();
+        }
+    }
+
+    private synchronized void onProviderEvent(ProviderEvent event) {
+        if (event == null || state == State.CLOSED || output == null) {
+            return;
+        }
+        if (event instanceof ProviderEvent.TranscriptDelta value) {
+            output.sendEvent(new RealtimeServerEvent.InputTranscriptDeltaEvent(
+                    sessionId, requireTurnId(), value.text()));
+        } else if (event instanceof ProviderEvent.TranscriptDone value) {
+            output.sendEvent(new RealtimeServerEvent.InputTranscriptDoneEvent(
+                    sessionId, requireTurnId(), value.text()));
+        } else if (event instanceof ProviderEvent.TextDelta value) {
+            output.sendEvent(new RealtimeServerEvent.AssistantTextDeltaEvent(
+                    sessionId, requireTurnId(), value.text()));
+        } else if (event instanceof ProviderEvent.TextDone value) {
+            output.sendEvent(new RealtimeServerEvent.AssistantTextDoneEvent(
+                    sessionId, requireTurnId(), value.text()));
+        } else if (event instanceof ProviderEvent.AudioDelta value) {
+            if (!assistantAudioStarted) {
+                output.sendEvent(new RealtimeServerEvent.AssistantAudioStartedEvent(
+                        sessionId, requireTurnId(), PROVIDER_OUTPUT_AUDIO));
+                assistantAudioStarted = true;
+            }
+            output.sendAudio(value.audio());
+        } else if (event instanceof ProviderEvent.AudioDone) {
+            output.sendEvent(new RealtimeServerEvent.AssistantAudioDoneEvent(sessionId, requireTurnId()));
+            output.sendEvent(new RealtimeServerEvent.AssistantDoneEvent(sessionId, requireTurnId()));
+            if (state == State.ASSISTANT_RESPONDING) {
+                state = State.READY;
+            }
+        } else if (event instanceof ProviderEvent.ToolCall value) {
+            output.sendEvent(new RealtimeServerEvent.ToolStartedEvent(
+                    sessionId, requireTurnId(), value.id(), value.name()));
+        } else if (event instanceof ProviderEvent.ProviderError value) {
+            output.sendEvent(new RealtimeServerEvent.SessionErrorEvent(
+                    sessionId, value.code(), value.message()));
+        }
+    }
+
+    private String requireTurnId() {
+        if (currentTurnId == null) {
+            throw new IllegalStateException("Provider emitted turn-scoped output before user turn started");
+        }
+        return currentTurnId;
     }
 
     private void transition(State expected, State next, String event) {

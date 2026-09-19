@@ -15,11 +15,21 @@ public final class ResolvedModel {
     private final String providerConfigJson;
     private final String modelConfigJson;
     private final String credential;
+    private final String realtimeInstructions;
+    private final String voiceConfigJson;
 
     public ResolvedModel(long tenantId, long modelId, long providerId,
                          String providerType, String modelType, String modelCode,
                          String baseUrl, String providerConfigJson, String modelConfigJson,
                          String credential) {
+        this(tenantId, modelId, providerId, providerType, modelType, modelCode,
+                baseUrl, providerConfigJson, modelConfigJson, credential, null, null);
+    }
+
+    private ResolvedModel(long tenantId, long modelId, long providerId,
+                          String providerType, String modelType, String modelCode,
+                          String baseUrl, String providerConfigJson, String modelConfigJson,
+                          String credential, String realtimeInstructions, String voiceConfigJson) {
         if (tenantId <= 0 || modelId <= 0 || providerId <= 0) {
             throw new IllegalArgumentException("tenantId, modelId and providerId must be positive");
         }
@@ -33,47 +43,27 @@ public final class ResolvedModel {
         this.providerConfigJson = providerConfigJson;
         this.modelConfigJson = modelConfigJson;
         this.credential = credential;
+        this.realtimeInstructions = realtimeInstructions;
+        this.voiceConfigJson = voiceConfigJson;
     }
 
-    public long tenantId() {
-        return tenantId;
+    public ResolvedModel withRealtimeSession(String instructions, String voiceConfigJson) {
+        return new ResolvedModel(tenantId, modelId, providerId, providerType, modelType, modelCode,
+                baseUrl, providerConfigJson, modelConfigJson, credential, instructions, voiceConfigJson);
     }
 
-    public long modelId() {
-        return modelId;
-    }
-
-    public long providerId() {
-        return providerId;
-    }
-
-    public String providerType() {
-        return providerType;
-    }
-
-    public String modelType() {
-        return modelType;
-    }
-
-    public String modelCode() {
-        return modelCode;
-    }
-
-    public String baseUrl() {
-        return baseUrl;
-    }
-
-    public String providerConfigJson() {
-        return providerConfigJson;
-    }
-
-    public String modelConfigJson() {
-        return modelConfigJson;
-    }
-
-    public String credential() {
-        return credential;
-    }
+    public long tenantId() { return tenantId; }
+    public long modelId() { return modelId; }
+    public long providerId() { return providerId; }
+    public String providerType() { return providerType; }
+    public String modelType() { return modelType; }
+    public String modelCode() { return modelCode; }
+    public String baseUrl() { return baseUrl; }
+    public String providerConfigJson() { return providerConfigJson; }
+    public String modelConfigJson() { return modelConfigJson; }
+    public String credential() { return credential; }
+    public String realtimeInstructions() { return realtimeInstructions; }
+    public String voiceConfigJson() { return voiceConfigJson; }
 
     @Override
     public String toString() {

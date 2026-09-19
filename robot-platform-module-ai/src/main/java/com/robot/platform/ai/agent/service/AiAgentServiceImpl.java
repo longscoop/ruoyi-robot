@@ -103,8 +103,9 @@ public class AiAgentServiceImpl implements AiAgentService {
 
         return new AiAgentConfig(agent.getId(), agent.getTenantId(), agent.getCode(), prompt.getContent(),
                 prompt.getId(), prompt.getVersion(), agent.getRealtimeMode(), agent.getConversationModelId(),
-                agent.getRealtimeModelId(), agent.getAsrModelId(), agent.getTtsModelId(), agent.getMemoryMode(),
-                Boolean.TRUE.equals(agent.getMemoryReadEnabled()), Boolean.TRUE.equals(agent.getMemoryWriteEnabled()));
+                agent.getRealtimeModelId(), agent.getAsrModelId(), agent.getTtsModelId(), agent.getVoiceConfigJson(),
+                agent.getMemoryMode(), Boolean.TRUE.equals(agent.getMemoryReadEnabled()),
+                Boolean.TRUE.equals(agent.getMemoryWriteEnabled()));
     }
 
     private ValidatedAgentConfig validate(long tenantId, String name, String code, long promptId,

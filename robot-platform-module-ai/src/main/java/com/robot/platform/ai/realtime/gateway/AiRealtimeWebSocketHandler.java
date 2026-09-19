@@ -2,14 +2,18 @@ package com.robot.platform.ai.realtime.gateway;
 
 import com.robot.platform.ai.realtime.protocol.RealtimeClientEvent;
 import com.robot.platform.ai.realtime.protocol.RealtimeProtocolCodec;
+import com.robot.platform.ai.realtime.protocol.RealtimeServerEvent;
+import com.robot.platform.ai.realtime.runtime.RealtimeRuntimeOutput;
 import com.robot.platform.device.auth.service.DeviceSession;
 import com.robot.platform.security.ApiAudience;
 import org.springframework.web.socket.BinaryMessage;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
+import org.springframework.web.socket.WebSocketMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.AbstractWebSocketHandler;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 import java.util.function.Supplier;
@@ -31,7 +35,9 @@ public class AiRealtimeWebSocketHandler extends AbstractWebSocketHandler {
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
         DeviceSession deviceSession = trustedDeviceSession(session);
-        runtimeManager().open(session.getId(), deviceSession);
+        RuntimeManager manager = runtimeManager();
+        manager.open(session.getId(), deviceSession);
+        manager.attachOutput(session.getId(), new WebSocketRuntimeOutput(session, codec));
     }
 
     @Override
@@ -82,25 +88,53 @@ public class AiRealtimeWebSocketHandler extends AbstractWebSocketHandler {
         return deviceSession;
     }
 
-    /**
-     * Gateway-only port. Task 4 provides the concrete RealtimeAgentRuntimeManager implementation.
-     */
     public interface RuntimeManager {
         void open(String webSocketSessionId, DeviceSession deviceSession);
+
+        default void attachOutput(String webSocketSessionId, RealtimeRuntimeOutput output) {
+        }
 
         Runtime require(String webSocketSessionId);
 
         Runtime remove(String webSocketSessionId);
     }
 
-    /**
-     * Minimal runtime surface required by the transport layer.
-     */
     public interface Runtime {
         void acceptControl(RealtimeClientEvent event);
 
         void acceptAudio(ByteBuffer pcm);
 
         void close(CloseStatus reason);
+    }
+
+    private static final class WebSocketRuntimeOutput implements RealtimeRuntimeOutput {
+        private final WebSocketSession session;
+        private final RealtimeProtocolCodec codec;
+
+        private WebSocketRuntimeOutput(WebSocketSession session, RealtimeProtocolCodec codec) {
+            this.session = session;
+            this.codec = codec;
+        }
+
+        @Override
+        public synchronized void sendEvent(RealtimeServerEvent event) {
+            send(new TextMessage(codec.encodeServerEvent(event)));
+        }
+
+        @Override
+        public synchronized void sendAudio(ByteBuffer audio) {
+            if (audio == null) {
+                throw new IllegalArgumentException("Realtime output audio must not be null");
+            }
+            send(new BinaryMessage(audio.asReadOnlyBuffer()));
+        }
+
+        private void send(WebSocketMessage<?> message) {
+            try {
+                session.sendMessage(message);
+            } catch (IOException exception) {
+                throw new IllegalStateException("Failed to send realtime WebSocket output", exception);
+            }
+        }
     }
 }
