@@ -1,0 +1,26 @@
+{
+  "asr": {
+    "extra": {
+      "end_smooth_window_ms": 1500
+    }
+  },
+  "tts": {
+    "speaker": "zh_female_vv_jupiter_bigtts",
+    "audio_config": {
+      "channel": 1,
+      "format": "pcm_s16le",
+      "sample_rate": 24000
+    }
+  },
+  "dialog": {
+    "bot_name": "小优",
+    "system_role": "你是家庭机器人小优。",
+    "speaking_style": "简洁自然",
+    "extra": {
+      "strict_audit": false,
+      "recv_timeout": 120,
+      "input_mod": "audio",
+      "model": "1.2.1.1"
+    }
+  }
+}
