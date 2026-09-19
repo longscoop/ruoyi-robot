@@ -138,7 +138,7 @@ class AiModelProviderServiceTest {
             assertThrows(ServiceException.class, () -> service.create(new AiModelService.CreateModelCommand(
                     1L, 20L, "Qwen Chat", "qwen-chat", "CHAT", null, null, "ENABLED")));
 
-            verify(modelMapper, never()).insert(any());
+            verify(modelMapper, never()).insert(any(AiModelDO.class));
         }
     }
 

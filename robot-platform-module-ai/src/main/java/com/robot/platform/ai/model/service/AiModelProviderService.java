@@ -1,5 +1,7 @@
 package com.robot.platform.ai.model.service;
 
+import java.util.List;
+
 public interface AiModelProviderService {
 
     ProviderView create(CreateProviderCommand command);
@@ -7,6 +9,10 @@ public interface AiModelProviderService {
     ProviderView update(UpdateProviderCommand command);
 
     ProviderView get(long tenantId, long id);
+
+    List<ProviderView> list(long tenantId);
+
+    void delete(long tenantId, long id);
 
     record CreateProviderCommand(long tenantId, String name, String code, String providerType,
                                  String baseUrl, String apiKey, String configJson) {

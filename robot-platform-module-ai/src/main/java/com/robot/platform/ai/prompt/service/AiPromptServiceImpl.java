@@ -6,6 +6,7 @@ import com.robot.platform.framework.tenant.core.context.TenantContextHolder;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
@@ -58,6 +59,12 @@ public class AiPromptServiceImpl implements AiPromptService {
             throw invalidParamException("AI prompt does not exist");
         }
         return row;
+    }
+
+    @Override
+    public List<AiPromptDO> list(long tenantId) {
+        requireTenant(tenantId);
+        return mapper.selectByTenantId(tenantId);
     }
 
     private static String requireType(String type) {

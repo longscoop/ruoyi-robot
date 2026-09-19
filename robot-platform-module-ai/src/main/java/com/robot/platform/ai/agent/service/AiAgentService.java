@@ -2,6 +2,8 @@ package com.robot.platform.ai.agent.service;
 
 import com.robot.platform.ai.agent.dal.dataobject.AiAgentDO;
 
+import java.util.List;
+
 public interface AiAgentService {
 
     AiAgentDO create(CreateAgentCommand command);
@@ -9,6 +11,10 @@ public interface AiAgentService {
     AiAgentDO update(UpdateAgentCommand command);
 
     AiAgentDO get(long tenantId, long id);
+
+    List<AiAgentDO> list(long tenantId);
+
+    void delete(long tenantId, long id);
 
     AiAgentConfig getResolvedConfig(long tenantId, long agentId);
 

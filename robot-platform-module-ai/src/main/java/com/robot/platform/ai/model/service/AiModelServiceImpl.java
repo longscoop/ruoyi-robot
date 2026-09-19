@@ -8,6 +8,7 @@ import com.robot.platform.framework.tenant.core.context.TenantContextHolder;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
@@ -80,6 +81,19 @@ public class AiModelServiceImpl implements AiModelService {
     public AiModelDO get(long tenantId, long id) {
         requireTenant(tenantId);
         return requireModel(tenantId, id);
+    }
+
+    @Override
+    public List<AiModelDO> list(long tenantId) {
+        requireTenant(tenantId);
+        return modelMapper.selectByTenantId(tenantId);
+    }
+
+    @Override
+    public void delete(long tenantId, long id) {
+        requireTenant(tenantId);
+        requireModel(tenantId, id);
+        modelMapper.logicalDeleteByIdAndTenantId(id, tenantId);
     }
 
     private AiModelDO requireModel(long tenantId, long id) {

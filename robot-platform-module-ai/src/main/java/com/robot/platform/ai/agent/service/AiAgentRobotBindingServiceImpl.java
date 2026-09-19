@@ -10,6 +10,8 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 import static com.robot.platform.framework.common.exception.util.ServiceExceptionUtil.invalidParamException;
 
 @Service
@@ -58,6 +60,25 @@ public class AiAgentRobotBindingServiceImpl implements AiAgentRobotBindingServic
             bindingMapper.updateById(binding);
         }
         return binding.getId();
+    }
+
+    @Override
+    public List<AiAgentRobotDO> list(long tenantId, long agentId) {
+        requireTenant(tenantId);
+        requireOwnedAgent(tenantId, agentId);
+        return bindingMapper.selectByAgent(tenantId, agentId);
+    }
+
+    @Override
+    public void unbind(long tenantId, long agentId, long robotId) {
+        requireTenant(tenantId);
+        requireOwnedAgent(tenantId, agentId);
+        robotOwnershipVerifier.requireOwnedByTenant(tenantId, robotId);
+        AiAgentRobotDO binding = bindingMapper.selectBinding(tenantId, robotId, agentId);
+        if (binding == null) {
+            throw invalidParamException("Agent is not bound to robot");
+        }
+        bindingMapper.logicalDeleteBinding(tenantId, robotId, agentId);
     }
 
     @Override

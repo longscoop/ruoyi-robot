@@ -46,7 +46,7 @@ class AiAgentRobotBindingServiceTest {
         assertThrows(ServiceException.class, () -> service.bind(1L, 10L, 20L, false));
 
         verifyNoInteractions(robotOwnershipVerifier);
-        verify(bindingMapper, never()).insert(any());
+        verify(bindingMapper, never()).insert(any(AiAgentRobotDO.class));
     }
 
     @Test
@@ -58,8 +58,8 @@ class AiAgentRobotBindingServiceTest {
 
         assertThrows(ServiceException.class, () -> service.bind(1L, 10L, 20L, false));
 
-        verify(bindingMapper, never()).insert(any());
-        verify(bindingMapper, never()).updateById(any());
+        verify(bindingMapper, never()).insert(any(AiAgentRobotDO.class));
+        verify(bindingMapper, never()).updateById(any(AiAgentRobotDO.class));
     }
 
     @Test
@@ -79,7 +79,7 @@ class AiAgentRobotBindingServiceTest {
         InOrder order = inOrder(bindingMapper);
         order.verify(bindingMapper).clearDefault(1L, 20L);
         order.verify(bindingMapper).selectBinding(1L, 20L, 10L);
-        order.verify(bindingMapper).insert(argThat(row ->
+        order.verify(bindingMapper).insert(argThat((AiAgentRobotDO row) ->
                 row.getTenantId().equals(1L)
                         && row.getAgentId().equals(10L)
                         && row.getRobotId().equals(20L)
@@ -100,7 +100,7 @@ class AiAgentRobotBindingServiceTest {
         assertEquals("ENABLED", existing.getStatus());
         assertFalse(existing.getIsDefault());
         verify(bindingMapper).updateById(existing);
-        verify(bindingMapper, never()).insert(any());
+        verify(bindingMapper, never()).insert(any(AiAgentRobotDO.class));
     }
 
     @Test

@@ -39,4 +39,11 @@ public interface AiAgentRobotMapper extends BaseMapperX<AiAgentRobotDO> {
     @Update("UPDATE ai_agent_robot SET is_default = 0 WHERE tenant_id = #{tenantId} "
             + "AND robot_id = #{robotId} AND is_default = 1 AND deleted = 0")
     int clearDefault(@Param("tenantId") long tenantId, @Param("robotId") long robotId);
+
+    @TenantIgnore
+    @Update("UPDATE ai_agent_robot SET deleted = 1 WHERE tenant_id = #{tenantId} AND robot_id = #{robotId} "
+            + "AND agent_id = #{agentId} AND deleted = 0")
+    int logicalDeleteBinding(@Param("tenantId") long tenantId,
+                             @Param("robotId") long robotId,
+                             @Param("agentId") long agentId);
 }

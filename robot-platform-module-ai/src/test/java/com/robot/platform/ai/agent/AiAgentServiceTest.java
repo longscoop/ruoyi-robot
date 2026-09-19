@@ -47,7 +47,7 @@ class AiAgentServiceTest {
 
         assertThrows(ServiceException.class, () -> service.create(nativeCommand(100L, 200L)));
 
-        verify(agentMapper, never()).insert(any());
+        verify(agentMapper, never()).insert(any(AiAgentDO.class));
     }
 
     @Test
@@ -80,7 +80,7 @@ class AiAgentServiceTest {
         assertThrows(ServiceException.class, () -> service.create(autoCommand(
                 100L, 201L, null, 202L, 203L)));
 
-        verify(agentMapper, never()).insert(any());
+        verify(agentMapper, never()).insert(any(AiAgentDO.class));
     }
 
     @Test
@@ -91,7 +91,7 @@ class AiAgentServiceTest {
 
         assertThrows(ServiceException.class, () -> service.create(nativeCommand(100L, 204L)));
 
-        verify(agentMapper, never()).insert(any());
+        verify(agentMapper, never()).insert(any(AiAgentDO.class));
     }
 
     @Test
