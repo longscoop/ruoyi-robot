@@ -1,0 +1,10 @@
+data: {"id":"chat-1","choices":[{"index":0,"delta":{"role":"assistant","content":"你"},"finish_reason":null}]}
+
+data: {"id":"chat-1","choices":[{"index":0,"delta":{"content":"好"},"finish_reason":null}]}
+
+data: {"id":"chat-1","choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"id":"call-1","type":"function","function":{"name":"inspect_home","arguments":"{\"room\":"}}]},"finish_reason":null}]}
+
+data: {"id":"chat-1","choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"function":{"arguments":"\"living\"}"}}]},"finish_reason":"tool_calls"}],"usage":{"prompt_tokens":12,"completion_tokens":7,"total_tokens":19}}
+
+data: [DONE]
+

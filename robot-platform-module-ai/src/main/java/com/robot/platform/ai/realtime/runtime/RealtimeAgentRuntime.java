@@ -240,8 +240,12 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
         candidateIdentity = event.identity();
         audioFormat = event.audio();
         route = router.route(resolved, RealtimeModelRouter.ModelCapabilities.configured(resolved));
-        if (route.mode() == RealtimeRoute.Mode.NATIVE && modelResolver != null && clientRegistry != null) {
-            openNativeProvider();
+        if (modelResolver != null && clientRegistry != null) {
+            if (route.mode() == RealtimeRoute.Mode.NATIVE) {
+                openNativeProvider();
+            } else if (route.mode() == RealtimeRoute.Mode.CASCADE) {
+                openCascadeProvider();
+            }
         }
         state = State.READY;
         if (output != null) {
@@ -262,6 +266,31 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
         resolvedModel = resolvedModel.withRealtimeSession(agentConfig.systemPrompt(), agentConfig.voiceConfigJson());
         RealtimeVoiceClient client = clientRegistry.requireRealtimeVoice(resolvedModel.providerType());
         providerSession = client.open(resolvedModel, this::onProviderEvent);
+    }
+
+    private void openCascadeProvider() {
+        Long asrModelId = route.asrModelId();
+        Long conversationModelId = route.conversationModelId();
+        Long ttsModelId = route.ttsModelId();
+        if (asrModelId == null || conversationModelId == null || ttsModelId == null) {
+            throw new IllegalStateException("Cascade route is missing ASR/Chat/TTS model ids");
+        }
+
+        CascadeModels models = withTrustedTenant(() -> new CascadeModels(
+                modelResolver.resolve(deviceSession.tenantId(), asrModelId),
+                modelResolver.resolve(deviceSession.tenantId(), conversationModelId),
+                modelResolver.resolve(deviceSession.tenantId(), ttsModelId)));
+        if (models.asr().modelId() != asrModelId
+                || models.chat().modelId() != conversationModelId
+                || models.tts().modelId() != ttsModelId) {
+            throw new IllegalStateException("Resolved models do not match cascade route");
+        }
+        providerSession = new CascadeRealtimePipeline(
+                models.asr(), models.chat(), models.tts(),
+                agentConfig.systemPrompt(), clientRegistry, this::onProviderEvent);
+    }
+
+    private record CascadeModels(ResolvedModel asr, ResolvedModel chat, ResolvedModel tts) {
     }
 
     private void speechStarted() {

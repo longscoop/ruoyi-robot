@@ -5,7 +5,7 @@ import java.util.Objects;
 
 public sealed interface ProviderEvent permits ProviderEvent.TranscriptDelta, ProviderEvent.TranscriptDone,
         ProviderEvent.TextDelta, ProviderEvent.TextDone, ProviderEvent.AudioDelta, ProviderEvent.AudioDone,
-        ProviderEvent.ToolCall, ProviderEvent.Usage, ProviderEvent.ProviderError {
+        ProviderEvent.ToolCall, ProviderEvent.ToolCallDelta, ProviderEvent.Usage, ProviderEvent.ProviderError {
 
     record TranscriptDelta(String text) implements ProviderEvent {
     }
@@ -35,6 +35,9 @@ public sealed interface ProviderEvent permits ProviderEvent.TranscriptDelta, Pro
     }
 
     record ToolCall(String id, String name, String argumentsJson) implements ProviderEvent {
+    }
+
+    record ToolCallDelta(int index, String id, String name, String argumentsDelta) implements ProviderEvent {
     }
 
     record Usage(Integer inputTokens, Integer outputTokens) implements ProviderEvent {
