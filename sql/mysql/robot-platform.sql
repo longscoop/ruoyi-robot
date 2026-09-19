@@ -441,3 +441,61 @@ CREATE TABLE IF NOT EXISTS `ai_agent_robot` (
   UNIQUE KEY `uk_ai_agent_robot` (`tenant_id`,`agent_id`,`robot_id`),
   KEY `idx_ai_agent_robot_default` (`tenant_id`,`robot_id`,`is_default`,`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='AI 智能体机器人绑定';
+
+-- Realtime Agent Runtime Task 1: conversation, message trace and realtime session persistence.
+CREATE TABLE IF NOT EXISTS `ai_conversation` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `tenant_id` bigint NOT NULL COMMENT '租户编号',
+  `agent_id` bigint NOT NULL COMMENT '智能体编号',
+  `robot_id` bigint NOT NULL COMMENT '机器人编号',
+  `member_id` bigint DEFAULT NULL COMMENT '成员编号',
+  `channel` varchar(32) NOT NULL COMMENT 'ROBOT_VOICE/APP_TEXT/APP_VOICE/WEB',
+  `status` varchar(16) NOT NULL DEFAULT 'ACTIVE' COMMENT '会话状态',
+  `started_at` datetime(3) NOT NULL COMMENT '开始时间',
+  `ended_at` datetime(3) DEFAULT NULL COMMENT '结束时间',
+  `created_at` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  PRIMARY KEY (`id`),
+  KEY `idx_ai_conversation_robot` (`tenant_id`,`robot_id`,`started_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='AI 对话会话';
+
+CREATE TABLE IF NOT EXISTS `ai_conversation_message` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `tenant_id` bigint NOT NULL COMMENT '租户编号',
+  `conversation_id` bigint NOT NULL COMMENT '会话编号',
+  `turn_id` varchar(64) DEFAULT NULL COMMENT '对话轮次编号',
+  `role` varchar(32) NOT NULL COMMENT 'SYSTEM/USER/ASSISTANT/TOOL_CALL/TOOL_RESULT',
+  `content` longtext NOT NULL COMMENT '消息内容',
+  `model_id` bigint DEFAULT NULL COMMENT '模型编号',
+  `input_tokens` int DEFAULT NULL COMMENT '输入 Token 数',
+  `output_tokens` int DEFAULT NULL COMMENT '输出 Token 数',
+  `latency_ms` bigint DEFAULT NULL COMMENT '耗时毫秒',
+  `metadata_json` json DEFAULT NULL COMMENT 'Provider/session/finish reason 等审计元数据',
+  `created_at` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  PRIMARY KEY (`id`),
+  KEY `idx_ai_message_conversation` (`tenant_id`,`conversation_id`,`created_at`,`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='AI 对话消息';
+
+CREATE TABLE IF NOT EXISTS `ai_realtime_session` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `tenant_id` bigint NOT NULL COMMENT '租户编号',
+  `conversation_id` bigint NOT NULL COMMENT '会话编号',
+  `agent_id` bigint NOT NULL COMMENT '智能体编号',
+  `robot_id` bigint NOT NULL COMMENT '机器人编号',
+  `member_id` bigint DEFAULT NULL COMMENT '成员编号',
+  `mode` varchar(16) NOT NULL COMMENT 'NATIVE/CASCADE',
+  `provider_id` bigint DEFAULT NULL COMMENT 'Provider 编号',
+  `model_id` bigint DEFAULT NULL COMMENT '模型编号',
+  `provider_session_id` varchar(255) DEFAULT NULL COMMENT '供应商会话编号',
+  `connected_at` datetime(3) NOT NULL COMMENT '连接时间',
+  `first_audio_at` datetime(3) DEFAULT NULL COMMENT '首个输入音频时间',
+  `first_response_at` datetime(3) DEFAULT NULL COMMENT '首个响应时间',
+  `ended_at` datetime(3) DEFAULT NULL COMMENT '结束时间',
+  `interrupt_count` int NOT NULL DEFAULT 0 COMMENT '打断次数',
+  `error_code` varchar(128) DEFAULT NULL COMMENT '异常错误码',
+  `status` varchar(16) NOT NULL DEFAULT 'CONNECTED' COMMENT '会话状态',
+  `created_at` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  PRIMARY KEY (`id`),
+  KEY `idx_ai_realtime_robot` (`tenant_id`,`robot_id`,`connected_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='AI 实时会话';
