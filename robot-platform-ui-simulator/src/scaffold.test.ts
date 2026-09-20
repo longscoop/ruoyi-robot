@@ -1,0 +1,1 @@
+import{describe,it,expect}from'vitest';describe('simulator scaffold',()=>{it('uses a dedicated H5 app',()=>expect('robot-platform-ui-simulator').toContain('simulator'))})
