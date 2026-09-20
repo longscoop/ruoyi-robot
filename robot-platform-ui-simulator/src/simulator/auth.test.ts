@@ -1,0 +1,1 @@
+import{describe,it,expect}from'vitest';import{sign}from'./auth';describe('device auth',()=>{it('creates hmac proof without persisting secret',async()=>{const s=await sign('secret','SN1',1,'n');expect(s).toMatch(/^[0-9a-f]{64}$/)})})
