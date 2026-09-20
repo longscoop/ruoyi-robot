@@ -1,0 +1,1 @@
+<template><el-dialog :model-value="modelValue" title="数字人预览" @update:model-value="$emit('update:modelValue',$event)"><div v-if="config">{{config.name||config.code}}</div></el-dialog></template><script setup lang="ts">defineProps<{modelValue:boolean;config?:any}>();defineEmits(['update:modelValue'])</script>
