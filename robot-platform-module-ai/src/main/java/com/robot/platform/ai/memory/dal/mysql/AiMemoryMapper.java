@@ -35,8 +35,4 @@ public interface AiMemoryMapper extends BaseMapperX<AiMemoryDO> {
                                              @Param("robotId") long robotId,
                                              @Param("memberId") Long memberId,
                                              @Param("now") LocalDateTime now);
-
-    @TenantIgnore
-    @Select("SELECT * FROM ai_memory WHERE tenant_id = #{tenantId} ORDER BY updated_at DESC")
-    List<AiMemoryDO> selectAllByTenantId(@Param("tenantId") long tenantId);
 }
