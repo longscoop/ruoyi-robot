@@ -100,3 +100,14 @@ registry 访问的环境执行 `pnpm install --frozen-lockfile` 前，不能宣�
 This project imports MIT-licensed backend and Vue 3 admin foundations. The pinned revisions, renamed source locations, and instructions for retrieving the original provenance record are in [UPSTREAM.md](UPSTREAM.md).
 
 The upstream MIT [LICENSE](LICENSE) is preserved.
+
+
+## Digital Human
+
+数字人能力建立在 Realtime Agent 之上：租户可配置数字人形象、Agent、TTS 音色、口型策略、欢迎语、打断和状态动作；设备仍通过 `/device-api/ai/realtime` 使用统一流式协议。V1 提供 STATIC_2D 管理与预览，并为 Live2D/3D renderer 保留供应商无关接口。
+
+设计：`docs/superpowers/specs/2026-09-20-digital-human-design.md`
+实施计划：`docs/superpowers/plans/2026-09-20-digital-human.md`
+端侧协议：`docs/digital-human-renderer-protocol.md`
+
+验证说明：数字人新增了 schema/service/admin/realtime/UI/permission/E2E contract tests。当前 GitHub 分支未配置可由本连接器触发的 CI run，因此提交记录不把 Maven/Vitest/E2E 标记为已执行；合并前应在标准开发/CI 环境执行 `robot-platform-module-ai` 测试、管理端 type-check/test 和 mock-provider realtime E2E。
