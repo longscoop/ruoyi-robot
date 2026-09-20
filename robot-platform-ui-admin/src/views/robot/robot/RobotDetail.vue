@@ -1,6 +1,7 @@
 <template>
   <Dialog v-model="visible" title="机器人详情" width="760px">
-    <el-descriptions v-if="robot" :column="2" border>
+    <el-tabs v-if="robot" v-model="tab"><el-tab-pane label="概览" name="overview">
+    <el-descriptions :column="2" border>
       <el-descriptions-item label="机器人编号">{{ robot.robotCode }}</el-descriptions-item
       ><el-descriptions-item label="名称">{{ robot.name }}</el-descriptions-item
       ><el-descriptions-item label="在线状态">{{
@@ -21,8 +22,9 @@
         status?.lastHeartbeatTime || '-'
       }}</el-descriptions-item>
     </el-descriptions>
-    <el-divider>能力</el-divider>
-    <el-empty v-if="!loading && capabilities.length === 0" description="未配置能力" /><el-table
+    </el-tab-pane><el-tab-pane label="智能体" name="agent"><AgentBindingsTab :robot-id="robot.id!" /></el-tab-pane></el-tabs>
+    <el-divider v-if="tab==='overview'">能力</el-divider>
+    <el-empty v-if="tab==='overview' && "!loading && capabilities.length === 0" description="未配置能力" /><el-table
       v-else
       v-loading="loading"
       :data="capabilities"
@@ -34,6 +36,7 @@
 </template>
 
 <script lang="ts" setup>
+import AgentBindingsTab from './AgentBindingsTab.vue'
 import {
   RobotApi,
   type RobotCapabilityVO,
@@ -43,6 +46,7 @@ import {
 
 defineOptions({ name: 'RobotDetail' })
 const visible = ref(false)
+const tab = ref('overview')
 const loading = ref(false)
 const robot = ref<RobotVO>()
 const status = ref<RobotStatusVO | null>()
