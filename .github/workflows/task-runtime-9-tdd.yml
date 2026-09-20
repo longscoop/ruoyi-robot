@@ -17,6 +17,6 @@ jobs:
       - name: Prepare reactor dependencies
         run: mvn -pl robot-platform-module-ai -am -Dmaven.test.skip=true install
       - name: Realtime interruption race tests
-        run: mvn -pl robot-platform-module-ai -Dtest=RealtimeInterruptionTest test
+        run: mvn -pl robot-platform-module-ai -Dtest=RealtimeInterruptionTest,QwenRealtimeVoiceClientTest,DoubaoRealtimeVoiceClientTest test
       - name: AI module tests
         run: mvn -pl robot-platform-module-ai -am test

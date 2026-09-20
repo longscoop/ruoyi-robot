@@ -91,6 +91,40 @@ class DoubaoRealtimeVoiceClientTest {
         assertEquals(1000, connector.webSocket.closeCode);
     }
 
+
+    @Test
+    void turnAwareCallbacksKeepLatePreviousTurnBoundUntilItsAsrFinal() {
+        FakeConnector connector = new FakeConnector();
+        List<TurnEvent> received = new ArrayList<>();
+        DoubaoRealtimeVoiceClient client = new DoubaoRealtimeVoiceClient(new DoubaoRealtimeCodec(), connector);
+        RealtimeProviderSession session = client.openTurnAware(
+                model(), (turnId, generation, event) -> received.add(new TurnEvent(turnId, generation, event)));
+
+        connector.emit(serverJson(50, "server-session", "{}"));
+        connector.emit(serverJson(150, "server-session", "{}"));
+
+        session.beginTurn("turn-a", 1L);
+        session.speechStarted();
+        session.speechStopped();
+
+        session.beginTurn("turn-b", 2L);
+        session.speechStarted();
+        session.speechStopped();
+
+        connector.emit(serverJson(451, "server-session",
+                "{\"results\":[{\"text\":\"A输入\",\"is_interim\":false}]}"));
+        connector.emit(serverJson(550, "server-session", "{\"content\":\"A回复\"}"));
+        connector.emit(serverJson(451, "server-session",
+                "{\"results\":[{\"text\":\"B输入\",\"is_interim\":false}]}"));
+        connector.emit(serverJson(550, "server-session", "{\"content\":\"B回复\"}"));
+
+        assertEquals(4, received.size());
+        assertEquals(new TurnStamp("turn-a", 1L), received.get(0).stamp());
+        assertEquals(new TurnStamp("turn-a", 1L), received.get(1).stamp());
+        assertEquals(new TurnStamp("turn-b", 2L), received.get(2).stamp());
+        assertEquals(new TurnStamp("turn-b", 2L), received.get(3).stamp());
+    }
+
     @Test
     void apiKeyAuthModeUsesOnlyApiKeyAndResourceId() {
         FakeConnector connector = new FakeConnector();
@@ -122,6 +156,16 @@ class DoubaoRealtimeVoiceClientTest {
         ResolvedModel missingConfig = new ResolvedModel(11L, 302L, 401L, "DOUBAO", "REALTIME_S2S",
                 "m", "wss://example", "{}", "{}", "secret");
         assertThrows(IllegalArgumentException.class, () -> client.open(missingConfig, event -> { }));
+    }
+
+
+    private record TurnEvent(String turnId, long generation, ProviderEvent event) {
+        private TurnStamp stamp() {
+            return new TurnStamp(turnId, generation);
+        }
+    }
+
+    private record TurnStamp(String turnId, long generation) {
     }
 
     private static ResolvedModel model() {
