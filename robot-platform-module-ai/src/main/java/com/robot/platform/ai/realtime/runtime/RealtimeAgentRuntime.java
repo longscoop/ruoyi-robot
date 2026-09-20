@@ -56,7 +56,6 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
     private RealtimeProviderSession providerSession;
     private long turnSequence;
     private TurnGeneration activeGeneration;
-    private TurnGeneration responseGeneration;
     private boolean assistantAudioStarted;
 
     public RealtimeAgentRuntime(DeviceSession deviceSession,
@@ -217,10 +216,6 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
         return activeGeneration;
     }
 
-    synchronized void acceptProviderCallback(TurnGeneration callbackGeneration, ProviderEvent event) {
-        handleProviderEvent(callbackGeneration, event);
-    }
-
     private void start(RealtimeClientEvent.SessionStartEvent event) {
         requireState(State.CONNECTING, "session.start");
         if (event.agentCode() == null || event.agentCode().isBlank()) {
@@ -274,7 +269,7 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
         }
         resolvedModel = resolvedModel.withRealtimeSession(agentConfig.systemPrompt(), agentConfig.voiceConfigJson());
         RealtimeVoiceClient client = clientRegistry.requireRealtimeVoice(resolvedModel.providerType());
-        providerSession = client.open(resolvedModel, this::onProviderEvent);
+        providerSession = client.openTurnAware(resolvedModel, this::onProviderTurnEvent);
     }
 
     private void openCascadeProvider() {
@@ -296,7 +291,7 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
         }
         providerSession = new CascadeRealtimePipeline(
                 models.asr(), models.chat(), models.tts(),
-                agentConfig.systemPrompt(), clientRegistry, this::onProviderEvent);
+                agentConfig.systemPrompt(), clientRegistry, this::onProviderTurnEvent);
     }
 
     private record CascadeModels(ResolvedModel asr, ResolvedModel chat, ResolvedModel tts) {
@@ -313,6 +308,7 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
         assistantAudioStarted = false;
         state = State.USER_SPEAKING;
         if (providerSession != null) {
+            providerSession.beginTurn(activeGeneration.turnId(), activeGeneration.generation());
             providerSession.speechStarted();
         }
     }
@@ -346,28 +342,26 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
         if (activeGeneration == null || activeGeneration.cancelled()) {
             throw new IllegalStateException("Active turn generation is not available");
         }
-        responseGeneration = activeGeneration;
         state = State.ASSISTANT_RESPONDING;
         if (providerSession != null) {
             providerSession.speechStopped();
         }
     }
 
-    private synchronized void onProviderEvent(ProviderEvent event) {
+    private synchronized void onProviderTurnEvent(String turnId, long generation, ProviderEvent event) {
         if (event == null || state == State.CLOSED || output == null) {
             return;
         }
-        if (event instanceof ProviderEvent.ProviderError value) {
+        if ((turnId == null || turnId.isBlank() || generation <= 0)
+                && event instanceof ProviderEvent.ProviderError value) {
             output.sendEvent(new RealtimeServerEvent.SessionErrorEvent(
                     sessionId, value.code(), value.message()));
             return;
         }
-
-        TurnGeneration callbackGeneration = event instanceof ProviderEvent.TranscriptDelta
-                || event instanceof ProviderEvent.TranscriptDone
-                ? activeGeneration
-                : responseGeneration;
-        handleProviderEvent(callbackGeneration, event);
+        if (turnId == null || turnId.isBlank() || generation <= 0) {
+            return;
+        }
+        handleProviderEvent(new TurnGeneration(turnId, generation), event);
     }
 
     private void handleProviderEvent(TurnGeneration callbackGeneration, ProviderEvent event) {

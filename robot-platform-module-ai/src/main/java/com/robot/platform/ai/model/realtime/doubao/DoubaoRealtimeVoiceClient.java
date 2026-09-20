@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.robot.platform.ai.model.client.ResolvedModel;
 import com.robot.platform.ai.model.client.RealtimeProviderListener;
 import com.robot.platform.ai.model.client.RealtimeProviderSession;
+import com.robot.platform.ai.model.client.RealtimeTurnListener;
 import com.robot.platform.ai.model.client.RealtimeVoiceClient;
 import com.robot.platform.framework.common.util.json.JsonUtils;
 import org.springframework.stereotype.Component;
@@ -39,20 +40,22 @@ public class DoubaoRealtimeVoiceClient implements RealtimeVoiceClient {
 
     @Override
     public RealtimeProviderSession open(ResolvedModel model, RealtimeProviderListener listener) {
-        Objects.requireNonNull(model, "model");
+        validate(model);
         Objects.requireNonNull(listener, "listener");
-        if (!"DOUBAO".equals(model.providerType())) {
-            throw new IllegalArgumentException("Doubao realtime client requires providerType=DOUBAO");
-        }
-        if (!"REALTIME_S2S".equals(model.modelType())) {
-            throw new IllegalArgumentException("Doubao realtime client requires modelType=REALTIME_S2S");
-        }
-        if (model.credential() == null || model.credential().isBlank()) {
-            throw new IllegalArgumentException("Doubao provider credential must not be blank");
-        }
-
-        ProviderConfig provider = ProviderConfig.parse(model.providerConfigJson());
         ModelConfig config = ModelConfig.parse(model.modelConfigJson(), model.realtimeInstructions());
+        return connect(model, new DoubaoRealtimeSession(codec, config.toSessionConfig(), listener));
+    }
+
+    @Override
+    public RealtimeProviderSession openTurnAware(ResolvedModel model, RealtimeTurnListener listener) {
+        validate(model);
+        Objects.requireNonNull(listener, "listener");
+        ModelConfig config = ModelConfig.parse(model.modelConfigJson(), model.realtimeInstructions());
+        return connect(model, new DoubaoRealtimeSession(codec, config.toSessionConfig(), listener));
+    }
+
+    private RealtimeProviderSession connect(ResolvedModel model, DoubaoRealtimeSession session) {
+        ProviderConfig provider = ProviderConfig.parse(model.providerConfigJson());
         Map<String, String> headers = new LinkedHashMap<>();
         headers.put("X-Api-Resource-Id", provider.resourceId());
         headers.put("X-Api-Connect-Id", UUID.randomUUID().toString());
@@ -63,11 +66,22 @@ public class DoubaoRealtimeVoiceClient implements RealtimeVoiceClient {
             headers.put("X-Api-Access-Key", model.credential());
             headers.put("X-Api-App-Key", provider.appKey());
         }
-
-        DoubaoRealtimeSession session = new DoubaoRealtimeSession(codec, config.toSessionConfig(), listener);
         WebSocket webSocket = connector.connect(URI.create(model.baseUrl()), Map.copyOf(headers), session).join();
         session.bind(webSocket);
         return session;
+    }
+
+    private static void validate(ResolvedModel model) {
+        Objects.requireNonNull(model, "model");
+        if (!"DOUBAO".equals(model.providerType())) {
+            throw new IllegalArgumentException("Doubao realtime client requires providerType=DOUBAO");
+        }
+        if (!"REALTIME_S2S".equals(model.modelType())) {
+            throw new IllegalArgumentException("Doubao realtime client requires modelType=REALTIME_S2S");
+        }
+        if (model.credential() == null || model.credential().isBlank()) {
+            throw new IllegalArgumentException("Doubao provider credential must not be blank");
+        }
     }
 
     interface WebSocketConnector {

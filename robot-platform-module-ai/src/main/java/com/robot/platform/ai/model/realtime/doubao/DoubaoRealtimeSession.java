@@ -2,6 +2,7 @@ package com.robot.platform.ai.model.realtime.doubao;
 
 import com.robot.platform.ai.model.client.RealtimeProviderListener;
 import com.robot.platform.ai.model.client.RealtimeProviderSession;
+import com.robot.platform.ai.model.client.RealtimeTurnListener;
 import com.robot.platform.ai.model.client.event.ProviderEvent;
 
 import java.io.ByteArrayOutputStream;
@@ -17,12 +18,16 @@ final class DoubaoRealtimeSession implements RealtimeProviderSession, WebSocket.
 
     private final DoubaoRealtimeCodec codec;
     private final DoubaoRealtimeCodec.SessionConfig config;
-    private final RealtimeProviderListener listener;
+    private final RealtimeProviderListener legacyListener;
+    private final RealtimeTurnListener turnListener;
     private final Deque<ByteBuffer> pendingAudio = new ArrayDeque<>();
     private final ByteArrayOutputStream incoming = new ByteArrayOutputStream();
 
     private WebSocket webSocket;
     private String sessionId;
+    private TurnStamp currentTurn;
+    private TurnStamp pendingAssistantTurn;
+    private TurnStamp assistantTurn;
     private boolean sessionReady;
     private boolean pendingEndAsr;
     private boolean pendingInterrupt;
@@ -34,7 +39,17 @@ final class DoubaoRealtimeSession implements RealtimeProviderSession, WebSocket.
                           RealtimeProviderListener listener) {
         this.codec = Objects.requireNonNull(codec, "codec");
         this.config = Objects.requireNonNull(config, "config");
-        this.listener = Objects.requireNonNull(listener, "listener");
+        this.legacyListener = Objects.requireNonNull(listener, "listener");
+        this.turnListener = null;
+    }
+
+    DoubaoRealtimeSession(DoubaoRealtimeCodec codec,
+                          DoubaoRealtimeCodec.SessionConfig config,
+                          RealtimeTurnListener listener) {
+        this.codec = Objects.requireNonNull(codec, "codec");
+        this.config = Objects.requireNonNull(config, "config");
+        this.legacyListener = null;
+        this.turnListener = Objects.requireNonNull(listener, "listener");
     }
 
     synchronized void bind(WebSocket webSocket) {
@@ -44,6 +59,14 @@ final class DoubaoRealtimeSession implements RealtimeProviderSession, WebSocket.
         } else if (this.webSocket != webSocket) {
             throw new IllegalStateException("Doubao WebSocket is already bound");
         }
+    }
+
+    @Override
+    public synchronized void beginTurn(String turnId, long generation) {
+        if (turnId == null || turnId.isBlank() || generation <= 0) {
+            throw new IllegalArgumentException("Valid turnId and generation are required");
+        }
+        currentTurn = new TurnStamp(turnId, generation);
     }
 
     @Override
@@ -70,6 +93,9 @@ final class DoubaoRealtimeSession implements RealtimeProviderSession, WebSocket.
     public synchronized void speechStopped() {
         requireOpen();
         suppressOutput = false;
+        if (turnListener != null) {
+            pendingAssistantTurn = requireCurrentTurn();
+        }
         if (sessionReady) {
             send(codec.encodeEndAsr(requireSessionId()));
         } else {
@@ -121,8 +147,7 @@ final class DoubaoRealtimeSession implements RealtimeProviderSession, WebSocket.
             if (last) {
                 ByteBuffer frameBytes = ByteBuffer.wrap(incoming.toByteArray());
                 incoming.reset();
-                DoubaoRealtimeCodec.DecodedFrame frame = codec.decodeFrame(frameBytes);
-                handleFrame(frame);
+                handleFrame(codec.decodeFrame(frameBytes));
             }
         }
         webSocket.request(1);
@@ -131,7 +156,7 @@ final class DoubaoRealtimeSession implements RealtimeProviderSession, WebSocket.
 
     @Override
     public CompletionStage<?> onText(WebSocket webSocket, CharSequence data, boolean last) {
-        listener.onEvent(new ProviderEvent.ProviderError(
+        emit(currentTurn, new ProviderEvent.ProviderError(
                 "unexpected_text_frame", "Doubao realtime protocol returned an unexpected text frame", false));
         webSocket.request(1);
         return null;
@@ -146,7 +171,7 @@ final class DoubaoRealtimeSession implements RealtimeProviderSession, WebSocket.
 
     @Override
     public void onError(WebSocket webSocket, Throwable error) {
-        listener.onEvent(new ProviderEvent.ProviderError(
+        emit(currentTurn, new ProviderEvent.ProviderError(
                 "transport_error",
                 error == null || error.getMessage() == null ? "Doubao realtime transport error" : error.getMessage(),
                 true));
@@ -155,7 +180,7 @@ final class DoubaoRealtimeSession implements RealtimeProviderSession, WebSocket.
     private void handleFrame(DoubaoRealtimeCodec.DecodedFrame frame) {
         if (frame.event() == DoubaoRealtimeCodec.EVENT_CONNECTION_STARTED) {
             if (frame.sessionId() == null || frame.sessionId().isBlank()) {
-                listener.onEvent(new ProviderEvent.ProviderError(
+                emit(currentTurn, new ProviderEvent.ProviderError(
                         "missing_session_id", "Doubao StartConnection response did not contain session id", false));
                 return;
             }
@@ -172,11 +197,36 @@ final class DoubaoRealtimeSession implements RealtimeProviderSession, WebSocket.
 
         List<ProviderEvent> events = codec.normalize(frame);
         for (ProviderEvent event : events) {
+            if (event instanceof ProviderEvent.TranscriptDelta) {
+                emit(currentTurn, event);
+                continue;
+            }
+            if (event instanceof ProviderEvent.TranscriptDone) {
+                emit(currentTurn, event);
+                if (pendingAssistantTurn != null) {
+                    assistantTurn = pendingAssistantTurn;
+                    pendingAssistantTurn = null;
+                }
+                continue;
+            }
             if (suppressOutput && isAssistantOutput(event)) {
                 continue;
             }
-            listener.onEvent(event);
+            TurnStamp turn = isAssistantOutput(event) || event instanceof ProviderEvent.Usage
+                    ? assistantOutputTurn()
+                    : currentTurn;
+            emit(turn, event);
         }
+    }
+
+    private TurnStamp assistantOutputTurn() {
+        if (assistantTurn != null) {
+            return assistantTurn;
+        }
+        if (pendingAssistantTurn != null) {
+            return pendingAssistantTurn;
+        }
+        return currentTurn;
     }
 
     private void flushPendingAudio() {
@@ -200,7 +250,28 @@ final class DoubaoRealtimeSession implements RealtimeProviderSession, WebSocket.
         return event instanceof ProviderEvent.TextDelta
                 || event instanceof ProviderEvent.TextDone
                 || event instanceof ProviderEvent.AudioDelta
-                || event instanceof ProviderEvent.AudioDone;
+                || event instanceof ProviderEvent.AudioDone
+                || event instanceof ProviderEvent.ToolCall
+                || event instanceof ProviderEvent.ToolCallDelta;
+    }
+
+    private void emit(TurnStamp turn, ProviderEvent event) {
+        if (turnListener != null) {
+            if (turn == null) {
+                turnListener.onEvent(null, 0L, event);
+            } else {
+                turnListener.onEvent(turn.turnId(), turn.generation(), event);
+            }
+        } else {
+            legacyListener.onEvent(event);
+        }
+    }
+
+    private TurnStamp requireCurrentTurn() {
+        if (currentTurn == null) {
+            throw new IllegalStateException("Doubao realtime turn context is not initialized");
+        }
+        return currentTurn;
     }
 
     private void send(ByteBuffer frame) {
@@ -235,4 +306,6 @@ final class DoubaoRealtimeSession implements RealtimeProviderSession, WebSocket.
         return copy.asReadOnlyBuffer();
     }
 
+    private record TurnStamp(String turnId, long generation) {
+    }
 }

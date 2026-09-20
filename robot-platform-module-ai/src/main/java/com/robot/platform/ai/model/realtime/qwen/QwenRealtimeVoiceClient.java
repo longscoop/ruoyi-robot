@@ -3,6 +3,7 @@ package com.robot.platform.ai.model.realtime.qwen;
 import com.robot.platform.ai.model.client.ResolvedModel;
 import com.robot.platform.ai.model.client.RealtimeProviderListener;
 import com.robot.platform.ai.model.client.RealtimeProviderSession;
+import com.robot.platform.ai.model.client.RealtimeTurnListener;
 import com.robot.platform.ai.model.client.RealtimeVoiceClient;
 import org.springframework.stereotype.Component;
 
@@ -36,8 +37,27 @@ public class QwenRealtimeVoiceClient implements RealtimeVoiceClient {
 
     @Override
     public RealtimeProviderSession open(ResolvedModel model, RealtimeProviderListener listener) {
-        Objects.requireNonNull(model, "model");
+        validate(model);
         Objects.requireNonNull(listener, "listener");
+        return connect(model, new QwenRealtimeSession(codec, model, listener));
+    }
+
+    @Override
+    public RealtimeProviderSession openTurnAware(ResolvedModel model, RealtimeTurnListener listener) {
+        validate(model);
+        Objects.requireNonNull(listener, "listener");
+        return connect(model, new QwenRealtimeSession(codec, model, listener));
+    }
+
+    private RealtimeProviderSession connect(ResolvedModel model, QwenRealtimeSession session) {
+        URI uri = buildUri(model.baseUrl(), model.modelCode());
+        WebSocket webSocket = connector.connect(uri, "Bearer " + model.credential(), session).join();
+        session.bind(webSocket);
+        return session;
+    }
+
+    private static void validate(ResolvedModel model) {
+        Objects.requireNonNull(model, "model");
         if (!"QWEN".equals(model.providerType())) {
             throw new IllegalArgumentException("Qwen realtime client requires providerType=QWEN");
         }
@@ -47,12 +67,6 @@ public class QwenRealtimeVoiceClient implements RealtimeVoiceClient {
         if (model.credential() == null || model.credential().isBlank()) {
             throw new IllegalArgumentException("Qwen provider credential must not be blank");
         }
-
-        URI uri = buildUri(model.baseUrl(), model.modelCode());
-        QwenRealtimeSession session = new QwenRealtimeSession(codec, model, listener);
-        WebSocket webSocket = connector.connect(uri, "Bearer " + model.credential(), session).join();
-        session.bind(webSocket);
-        return session;
     }
 
     private static URI buildUri(String baseUrl, String modelCode) {
