@@ -535,3 +535,24 @@ CREATE TABLE IF NOT EXISTS `ai_memory` (
   CONSTRAINT `chk_ai_memory_importance` CHECK (`importance` >= 0 AND `importance` <= 1),
   CONSTRAINT `chk_ai_memory_confidence` CHECK (`confidence` >= 0 AND `confidence` <= 1)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='AI 长期记忆';
+
+
+-- Realtime Agent AI Center: six tenant-admin pages and button permissions.
+INSERT INTO system_menu (id,name,permission,type,sort,parent_id,path,icon,component,component_name,status,visible,keep_alive,always_show,creator,create_time,updater,update_time,deleted)
+SELECT 920000,'AI 中心','',1,5,910000,'ai','ep:chat-dot-round',NULL,NULL,0,b'1',b'1',b'1','admin',NOW(),'admin',NOW(),b'0' WHERE NOT EXISTS(SELECT 1 FROM system_menu WHERE id=920000);
+INSERT INTO system_menu (id,name,permission,type,sort,parent_id,path,icon,component,component_name,status,visible,keep_alive,always_show,creator,create_time,updater,update_time,deleted)
+SELECT m.id,m.name,m.permission,2,m.sort,920000,m.path,'',m.component,m.component_name,0,b'1',b'1',b'1','admin',NOW(),'admin',NOW(),b'0' FROM (
+SELECT 920010 id,'智能体' name,'ai:agent:query' permission,1 sort,'agent' path,'ai/agent/index' component,'AiAgent' component_name UNION ALL
+SELECT 920020,'Prompt','ai:prompt:query',2,'prompt','ai/prompt/index','AiPrompt' UNION ALL
+SELECT 920030,'模型','ai:model:query',3,'model','ai/model/index','AiModel' UNION ALL
+SELECT 920040,'对话记录','ai:conversation:query',4,'conversation','ai/conversation/index','AiConversation' UNION ALL
+SELECT 920050,'长期记忆','ai:memory:query',5,'memory','ai/memory/index','AiMemory' UNION ALL
+SELECT 920060,'实时会话','ai:realtime:query',6,'realtime','ai/realtime/index','AiRealtime')m
+WHERE NOT EXISTS(SELECT 1 FROM system_menu e WHERE e.id=m.id);
+INSERT INTO system_menu (id,name,permission,type,sort,parent_id,path,icon,component,component_name,status,visible,keep_alive,always_show,creator,create_time,updater,update_time,deleted)
+SELECT m.id,m.name,m.permission,3,m.sort,m.parent_id,'','','',NULL,0,b'1',b'0',b'0','admin',NOW(),'admin',NOW(),b'0' FROM (
+SELECT 920101 id,'智能体新增' name,'ai:agent:create' permission,1 sort,920010 parent_id UNION ALL SELECT 920102,'智能体修改','ai:agent:update',2,920010 UNION ALL SELECT 920103,'智能体删除','ai:agent:delete',3,920010 UNION ALL SELECT 920104,'智能体绑定','ai:agent:bind',4,920010 UNION ALL
+SELECT 920111,'Prompt 新增','ai:prompt:create',1,920020 UNION ALL
+SELECT 920121,'Provider 查询','ai:provider:query',1,920030 UNION ALL SELECT 920122,'Provider 新增','ai:provider:create',2,920030 UNION ALL SELECT 920123,'Provider 修改','ai:provider:update',3,920030 UNION ALL SELECT 920124,'Provider 删除','ai:provider:delete',4,920030 UNION ALL SELECT 920125,'模型新增','ai:model:create',5,920030 UNION ALL SELECT 920126,'模型修改','ai:model:update',6,920030 UNION ALL SELECT 920127,'模型删除','ai:model:delete',7,920030 UNION ALL
+SELECT 920131,'记忆修改','ai:memory:update',1,920050 UNION ALL SELECT 920132,'记忆删除','ai:memory:delete',2,920050)m
+WHERE NOT EXISTS(SELECT 1 FROM system_menu e WHERE e.id=m.id);
