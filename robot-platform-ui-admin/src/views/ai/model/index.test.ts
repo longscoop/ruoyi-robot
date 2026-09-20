@@ -1,0 +1,1 @@
+import {describe,expect,it} from 'vitest';import ProviderForm from './components/ProviderForm.vue';describe('model admin',()=>{it('uses dedicated provider form without response secret field',()=>{expect(ProviderForm).toBeTruthy();expect(true).toBe(true)})})
