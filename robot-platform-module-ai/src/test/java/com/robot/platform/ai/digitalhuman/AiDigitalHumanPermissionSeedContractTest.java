@@ -1,0 +1,2 @@
+package com.robot.platform.ai.digitalhuman;import org.junit.jupiter.api.Test;import java.nio.file.*;import static org.junit.jupiter.api.Assertions.*;
+class AiDigitalHumanPermissionSeedContractTest {@Test void everyDigitalHumanPermissionIsSeeded() throws Exception {String s=Files.readString(Path.of("../sql/mysql/robot-platform.sql"));for(String p:new String[]{"ai:digital-human:query","ai:digital-human:create","ai:digital-human:update","ai:digital-human:delete","ai:digital-human:preview"})assertTrue(s.contains("'"+p+"'"),p);}}

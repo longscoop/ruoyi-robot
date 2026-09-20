@@ -610,3 +610,16 @@ CREATE TABLE IF NOT EXISTS `ai_digital_human_action` (
   KEY `idx_ai_digital_human_action_human` (`tenant_id`,`digital_human_id`),
   CONSTRAINT `chk_ai_digital_human_action_state` CHECK (`state` IN ('IDLE','LISTENING','THINKING','SPEAKING','EXECUTING','ERROR'))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='AI 数字人状态动作';
+
+
+-- Digital Human Task 10: AI Center menu and tenant-admin permissions.
+INSERT INTO system_menu (id,name,permission,type,sort,parent_id,path,icon,component,component_name,status,visible,keep_alive,always_show,creator,create_time,updater,update_time,deleted)
+SELECT 920070,'数字人','ai:digital-human:query',2,7,920000,'digital-human','ep:user','ai/digital-human/index','AiDigitalHuman',0,b'1',b'1',b'1','admin',NOW(),'admin',NOW(),b'0'
+WHERE NOT EXISTS(SELECT 1 FROM system_menu WHERE id=920070);
+INSERT INTO system_menu (id,name,permission,type,sort,parent_id,path,icon,component,component_name,status,visible,keep_alive,always_show,creator,create_time,updater,update_time,deleted)
+SELECT m.id,m.name,m.permission,3,m.sort,920070,'','','',NULL,0,b'1',b'0',b'0','admin',NOW(),'admin',NOW(),b'0' FROM (
+ SELECT 920141 id,'数字人新增' name,'ai:digital-human:create' permission,1 sort UNION ALL
+ SELECT 920142,'数字人修改','ai:digital-human:update',2 UNION ALL
+ SELECT 920143,'数字人删除','ai:digital-human:delete',3 UNION ALL
+ SELECT 920144,'数字人预览','ai:digital-human:preview',4
+)m WHERE NOT EXISTS(SELECT 1 FROM system_menu e WHERE e.id=m.id);
