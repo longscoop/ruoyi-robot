@@ -152,7 +152,7 @@ public class RealtimeProtocolCodec {
             putIfNotNull(root, "toolCallId", value.toolCallId());
             putIfNotNull(root, "name", value.name());
             putIfNotNull(root, "result", value.result());
-        } else if (event instanceof RealtimeServerEvent.SessionClosedEvent value) {
+        } else if (event instanceof RealtimeServerEvent.DigitalHumanConfigEvent value) {\n            putIfNotNull(root, "config", value.configJson());\n        } else if (event instanceof RealtimeServerEvent.DigitalHumanStateEvent value) {\n            putIfNotNull(root, "state", value.state()); putIfNotNull(root, "actionCode", value.actionCode());\n        } else if (event instanceof RealtimeServerEvent.DigitalHumanVisemeEvent value) {\n            putIfNotNull(root, "timeline", value.timelineJson());\n        } else if (event instanceof RealtimeServerEvent.SessionClosedEvent value) {
             putIfNotNull(root, "reason", value.reason());
         }
     }
