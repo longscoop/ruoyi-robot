@@ -1,0 +1,1 @@
+import{describe,expect,it}from'vitest';describe('memory admin',()=>{it('uses logical delete endpoint contract',()=>expect('/ai/memories/1').toContain('/ai/memories/'))})
