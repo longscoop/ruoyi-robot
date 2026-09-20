@@ -499,3 +499,39 @@ CREATE TABLE IF NOT EXISTS `ai_realtime_session` (
   PRIMARY KEY (`id`),
   KEY `idx_ai_realtime_robot` (`tenant_id`,`robot_id`,`connected_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='AI 实时会话';
+
+
+-- Realtime Agent Memory Task 1: tenant-scoped long-term memory persistence.
+CREATE TABLE IF NOT EXISTS `ai_memory` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `tenant_id` bigint NOT NULL COMMENT '租户编号',
+  `scope` varchar(32) NOT NULL COMMENT 'MEMBER/MEMBER_ROBOT/ROBOT',
+  `member_id` bigint DEFAULT NULL COMMENT '成员编号',
+  `robot_id` bigint DEFAULT NULL COMMENT '机器人编号',
+  `memory_type` varchar(32) NOT NULL COMMENT 'PROFILE/PREFERENCE/RELATION/HABIT/FACT/ENVIRONMENT/INSTRUCTION',
+  `content` longtext NOT NULL COMMENT '记忆正文',
+  `summary` varchar(1000) DEFAULT NULL COMMENT '记忆摘要',
+  `importance` decimal(5,4) NOT NULL COMMENT '重要度 0-1',
+  `confidence` decimal(5,4) NOT NULL COMMENT '置信度 0-1',
+  `source_conversation_id` bigint DEFAULT NULL COMMENT '来源会话编号',
+  `source_message_id` bigint DEFAULT NULL COMMENT '来源消息编号',
+  `first_observed_at` datetime(3) NOT NULL COMMENT '首次观察时间',
+  `last_observed_at` datetime(3) NOT NULL COMMENT '最近观察时间',
+  `expires_at` datetime(3) DEFAULT NULL COMMENT '过期时间',
+  `status` varchar(16) NOT NULL DEFAULT 'ACTIVE' COMMENT 'ACTIVE/SUPERSEDED/DELETED',
+  `created_at` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  PRIMARY KEY (`id`),
+  KEY `idx_ai_memory_member` (`tenant_id`,`member_id`,`scope`,`status`,`expires_at`),
+  KEY `idx_ai_memory_robot` (`tenant_id`,`robot_id`,`scope`,`status`,`expires_at`),
+  KEY `idx_ai_memory_source` (`tenant_id`,`source_conversation_id`,`source_message_id`),
+  CONSTRAINT `chk_ai_memory_scope` CHECK (
+    (`scope` = 'MEMBER' AND `member_id` IS NOT NULL)
+    OR (`scope` = 'MEMBER_ROBOT' AND `member_id` IS NOT NULL AND `robot_id` IS NOT NULL)
+    OR (`scope` = 'ROBOT' AND `robot_id` IS NOT NULL)
+  ),
+  CONSTRAINT `chk_ai_memory_type` CHECK (`memory_type` IN ('PROFILE','PREFERENCE','RELATION','HABIT','FACT','ENVIRONMENT','INSTRUCTION')),
+  CONSTRAINT `chk_ai_memory_status` CHECK (`status` IN ('ACTIVE','SUPERSEDED','DELETED')),
+  CONSTRAINT `chk_ai_memory_importance` CHECK (`importance` >= 0 AND `importance` <= 1),
+  CONSTRAINT `chk_ai_memory_confidence` CHECK (`confidence` >= 0 AND `confidence` <= 1)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='AI 长期记忆';
