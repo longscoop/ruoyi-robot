@@ -55,7 +55,8 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
     private RealtimeRuntimeOutput output;
     private RealtimeProviderSession providerSession;
     private long turnSequence;
-    private String currentTurnId;
+    private TurnGeneration activeGeneration;
+    private TurnGeneration responseGeneration;
     private boolean assistantAudioStarted;
 
     public RealtimeAgentRuntime(DeviceSession deviceSession,
@@ -212,6 +213,14 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
         return deviceSession;
     }
 
+    synchronized TurnGeneration activeGenerationSnapshot() {
+        return activeGeneration;
+    }
+
+    synchronized void acceptProviderCallback(TurnGeneration callbackGeneration, ProviderEvent event) {
+        handleProviderEvent(callbackGeneration, event);
+    }
+
     private void start(RealtimeClientEvent.SessionStartEvent event) {
         requireState(State.CONNECTING, "session.start");
         if (event.agentCode() == null || event.agentCode().isBlank()) {
@@ -294,8 +303,13 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
     }
 
     private void speechStarted() {
-        requireState(State.READY, "input.speech_started");
-        currentTurnId = "turn-" + (++turnSequence);
+        if (state == State.ASSISTANT_RESPONDING) {
+            interruptActiveResponse("USER_SPEECH");
+        } else {
+            requireState(State.READY, "input.speech_started");
+        }
+
+        activeGeneration = new TurnGeneration("turn-" + (++turnSequence), turnSequence);
         assistantAudioStarted = false;
         state = State.USER_SPEAKING;
         if (providerSession != null) {
@@ -303,8 +317,36 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
         }
     }
 
+    private void interruptActiveResponse(String reason) {
+        TurnGeneration interrupted = activeGeneration;
+        if (interrupted == null) {
+            throw new IllegalStateException("Assistant response has no active turn generation");
+        }
+        boolean firstCancellation = interrupted.cancel();
+        if (!firstCancellation) {
+            return;
+        }
+
+        if (output != null) {
+            output.sendEvent(new RealtimeServerEvent.PlaybackStopEvent(
+                    sessionId, interrupted.turnId(), reason));
+        }
+        if (providerSession != null) {
+            providerSession.cancelCurrentResponse();
+        }
+        assistantAudioStarted = false;
+        if (output != null) {
+            output.sendEvent(new RealtimeServerEvent.AssistantInterruptedEvent(
+                    sessionId, interrupted.turnId(), reason));
+        }
+    }
+
     private void speechStopped() {
         requireState(State.USER_SPEAKING, "input.speech_stopped");
+        if (activeGeneration == null || activeGeneration.cancelled()) {
+            throw new IllegalStateException("Active turn generation is not available");
+        }
+        responseGeneration = activeGeneration;
         state = State.ASSISTANT_RESPONDING;
         if (providerSession != null) {
             providerSession.speechStopped();
@@ -315,45 +357,69 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
         if (event == null || state == State.CLOSED || output == null) {
             return;
         }
+        if (event instanceof ProviderEvent.ProviderError value) {
+            output.sendEvent(new RealtimeServerEvent.SessionErrorEvent(
+                    sessionId, value.code(), value.message()));
+            return;
+        }
+
+        TurnGeneration callbackGeneration = event instanceof ProviderEvent.TranscriptDelta
+                || event instanceof ProviderEvent.TranscriptDone
+                ? activeGeneration
+                : responseGeneration;
+        handleProviderEvent(callbackGeneration, event);
+    }
+
+    private void handleProviderEvent(TurnGeneration callbackGeneration, ProviderEvent event) {
+        if (event == null || state == State.CLOSED || output == null) {
+            return;
+        }
+        if (!matchesActive(callbackGeneration)) {
+            return;
+        }
+
+        String turnId = callbackGeneration.turnId();
         if (event instanceof ProviderEvent.TranscriptDelta value) {
             output.sendEvent(new RealtimeServerEvent.InputTranscriptDeltaEvent(
-                    sessionId, requireTurnId(), value.text()));
+                    sessionId, turnId, value.text()));
         } else if (event instanceof ProviderEvent.TranscriptDone value) {
             output.sendEvent(new RealtimeServerEvent.InputTranscriptDoneEvent(
-                    sessionId, requireTurnId(), value.text()));
+                    sessionId, turnId, value.text()));
         } else if (event instanceof ProviderEvent.TextDelta value) {
             output.sendEvent(new RealtimeServerEvent.AssistantTextDeltaEvent(
-                    sessionId, requireTurnId(), value.text()));
+                    sessionId, turnId, value.text()));
         } else if (event instanceof ProviderEvent.TextDone value) {
             output.sendEvent(new RealtimeServerEvent.AssistantTextDoneEvent(
-                    sessionId, requireTurnId(), value.text()));
+                    sessionId, turnId, value.text()));
         } else if (event instanceof ProviderEvent.AudioDelta value) {
             if (!assistantAudioStarted) {
                 output.sendEvent(new RealtimeServerEvent.AssistantAudioStartedEvent(
-                        sessionId, requireTurnId(), PROVIDER_OUTPUT_AUDIO));
+                        sessionId, turnId, PROVIDER_OUTPUT_AUDIO));
                 assistantAudioStarted = true;
             }
             output.sendAudio(value.audio());
         } else if (event instanceof ProviderEvent.AudioDone) {
-            output.sendEvent(new RealtimeServerEvent.AssistantAudioDoneEvent(sessionId, requireTurnId()));
-            output.sendEvent(new RealtimeServerEvent.AssistantDoneEvent(sessionId, requireTurnId()));
+            output.sendEvent(new RealtimeServerEvent.AssistantAudioDoneEvent(sessionId, turnId));
+            output.sendEvent(new RealtimeServerEvent.AssistantDoneEvent(sessionId, turnId));
             if (state == State.ASSISTANT_RESPONDING) {
                 state = State.READY;
             }
+            assistantAudioStarted = false;
         } else if (event instanceof ProviderEvent.ToolCall value) {
             output.sendEvent(new RealtimeServerEvent.ToolStartedEvent(
-                    sessionId, requireTurnId(), value.id(), value.name()));
+                    sessionId, turnId, value.id(), value.name()));
         } else if (event instanceof ProviderEvent.ProviderError value) {
             output.sendEvent(new RealtimeServerEvent.SessionErrorEvent(
                     sessionId, value.code(), value.message()));
         }
     }
 
-    private String requireTurnId() {
-        if (currentTurnId == null) {
-            throw new IllegalStateException("Provider emitted turn-scoped output before user turn started");
-        }
-        return currentTurnId;
+    private boolean matchesActive(TurnGeneration callbackGeneration) {
+        return callbackGeneration != null
+                && activeGeneration != null
+                && !callbackGeneration.cancelled()
+                && !activeGeneration.cancelled()
+                && activeGeneration.matches(callbackGeneration.turnId(), callbackGeneration.generation());
     }
 
     private void transition(State expected, State next, String event) {
