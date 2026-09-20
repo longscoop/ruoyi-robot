@@ -24,8 +24,8 @@
     </el-descriptions>
     </el-tab-pane><el-tab-pane label="智能体" name="agent"><AgentBindingsTab :robot-id="robot.id!" /></el-tab-pane></el-tabs>
     <el-divider v-if="tab==='overview'">能力</el-divider>
-    <el-empty v-if="tab==='overview' && "!loading && capabilities.length === 0" description="未配置能力" /><el-table
-      v-else
+    <el-empty v-if="tab === 'overview' && !loading && capabilities.length === 0" description="未配置能力" /><el-table
+      v-if="tab === 'overview' && (loading || capabilities.length > 0)"
       v-loading="loading"
       :data="capabilities"
       ><el-table-column label="能力编码" prop="capabilityCode" /><el-table-column
