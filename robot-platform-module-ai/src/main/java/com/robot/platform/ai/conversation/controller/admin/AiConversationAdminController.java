@@ -1,0 +1,7 @@
+package com.robot.platform.ai.conversation.controller.admin;
+import com.robot.platform.ai.conversation.dal.dataobject.*;import com.robot.platform.ai.conversation.dal.mysql.*;import com.robot.platform.framework.common.pojo.CommonResult;import com.robot.platform.framework.tenant.core.context.TenantContextHolder;import lombok.RequiredArgsConstructor;import org.springframework.security.access.prepost.PreAuthorize;import org.springframework.web.bind.annotation.*;import java.util.*;import static com.robot.platform.framework.common.pojo.CommonResult.success;
+@RestController @RequestMapping("/admin-api/ai/conversations") @RequiredArgsConstructor
+public class AiConversationAdminController {private final AiConversationMapper conversations;private final AiConversationMessageMapper messages;
+@GetMapping @PreAuthorize("@ss.hasPermission('ai:conversation:query')") public CommonResult<List<AiConversationDO>> list(){return success(conversations.selectAllByTenantId(TenantContextHolder.getRequiredTenantId()));}
+@GetMapping("/{id}") @PreAuthorize("@ss.hasPermission('ai:conversation:query')") public CommonResult<ConversationDetail> get(@PathVariable long id){long t=TenantContextHolder.getRequiredTenantId();AiConversationDO c=conversations.selectByIdAndTenantId(id,t);if(c==null)throw new IllegalArgumentException("Conversation not found");return success(new ConversationDetail(c,messages.selectByConversationIdAndTenantId(id,t)));}
+public record ConversationDetail(AiConversationDO conversation,List<AiConversationMessageDO> messages){}}

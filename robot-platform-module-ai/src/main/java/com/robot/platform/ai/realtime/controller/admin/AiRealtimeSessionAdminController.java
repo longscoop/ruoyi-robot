@@ -1,0 +1,6 @@
+package com.robot.platform.ai.realtime.controller.admin;
+import com.robot.platform.ai.realtime.dal.dataobject.AiRealtimeSessionDO;import com.robot.platform.ai.realtime.dal.mysql.AiRealtimeSessionMapper;import com.robot.platform.framework.common.pojo.CommonResult;import com.robot.platform.framework.tenant.core.context.TenantContextHolder;import lombok.RequiredArgsConstructor;import org.springframework.security.access.prepost.PreAuthorize;import org.springframework.web.bind.annotation.*;import java.util.*;import static com.robot.platform.framework.common.pojo.CommonResult.success;
+@RestController @RequestMapping("/admin-api/ai/realtime-sessions") @RequiredArgsConstructor
+public class AiRealtimeSessionAdminController {private final AiRealtimeSessionMapper mapper;
+@GetMapping @PreAuthorize("@ss.hasPermission('ai:realtime:query')") public CommonResult<List<AiRealtimeSessionDO>> list(){return success(mapper.selectAllByTenantId(TenantContextHolder.getRequiredTenantId()));}
+@GetMapping("/{id}") @PreAuthorize("@ss.hasPermission('ai:realtime:query')") public CommonResult<AiRealtimeSessionDO> get(@PathVariable long id){AiRealtimeSessionDO row=mapper.selectByIdAndTenantId(id,TenantContextHolder.getRequiredTenantId());if(row==null)throw new IllegalArgumentException("Realtime session not found");return success(row);}}
