@@ -89,6 +89,45 @@ class QwenRealtimeVoiceClientTest {
         assertInstanceOf(ProviderEvent.AudioDone.class, received.get(2));
     }
 
+
+    @Test
+    void turnAwareCallbacksKeepProviderResponseBoundToOriginalGeneration() {
+        FakeConnector connector = new FakeConnector();
+        List<TurnEvent> received = new ArrayList<>();
+        QwenRealtimeVoiceClient client = new QwenRealtimeVoiceClient(new QwenRealtimeCodec(), connector);
+        RealtimeProviderSession session = client.openTurnAware(
+                model("qwen-model-from-db", "secret-key").withRealtimeSession("prompt", null),
+                (turnId, generation, event) -> received.add(new TurnEvent(turnId, generation, event)));
+
+        session.beginTurn("turn-a", 1L);
+        session.speechStarted();
+        session.speechStopped();
+        connector.listener.onText(connector.webSocket,
+                "{\"type\":\"input_audio_buffer.committed\",\"item_id\":\"item-a\"}", true);
+        connector.listener.onText(connector.webSocket,
+                "{\"type\":\"response.created\",\"response\":{\"id\":\"resp-a\"}}", true);
+
+        session.beginTurn("turn-b", 2L);
+        session.speechStarted();
+        session.speechStopped();
+        connector.listener.onText(connector.webSocket,
+                "{\"type\":\"input_audio_buffer.committed\",\"item_id\":\"item-b\"}", true);
+        connector.listener.onText(connector.webSocket,
+                "{\"type\":\"response.created\",\"response\":{\"id\":\"resp-b\"}}", true);
+
+        connector.listener.onText(connector.webSocket,
+                "{\"type\":\"conversation.item.input_audio_transcription.delta\",\"item_id\":\"item-a\",\"text\":\"旧\",\"stash\":\"\"}", true);
+        connector.listener.onText(connector.webSocket,
+                "{\"type\":\"response.audio.delta\",\"response_id\":\"resp-a\",\"delta\":\"AQ==\"}", true);
+        connector.listener.onText(connector.webSocket,
+                "{\"type\":\"response.audio.delta\",\"response_id\":\"resp-b\",\"delta\":\"Ag==\"}", true);
+
+        assertEquals(3, received.size());
+        assertEquals(new TurnStamp("turn-a", 1L), received.get(0).stamp());
+        assertEquals(new TurnStamp("turn-a", 1L), received.get(1).stamp());
+        assertEquals(new TurnStamp("turn-b", 2L), received.get(2).stamp());
+    }
+
     @Test
     void rejectsWrongProviderModelTypeOrMissingCredential() {
         FakeConnector connector = new FakeConnector();
@@ -106,6 +145,16 @@ class QwenRealtimeVoiceClientTest {
 
         assertThrows(IllegalArgumentException.class,
                 () -> client.open(model("m", null), event -> { }));
+    }
+
+
+    private record TurnEvent(String turnId, long generation, ProviderEvent event) {
+        private TurnStamp stamp() {
+            return new TurnStamp(turnId, generation);
+        }
+    }
+
+    private record TurnStamp(String turnId, long generation) {
     }
 
     private static ResolvedModel model(String modelCode, String credential) {

@@ -55,7 +55,7 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
     private RealtimeRuntimeOutput output;
     private RealtimeProviderSession providerSession;
     private long turnSequence;
-    private String currentTurnId;
+    private TurnGeneration activeGeneration;
     private boolean assistantAudioStarted;
 
     public RealtimeAgentRuntime(DeviceSession deviceSession,
@@ -212,6 +212,10 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
         return deviceSession;
     }
 
+    synchronized TurnGeneration activeGenerationSnapshot() {
+        return activeGeneration;
+    }
+
     private void start(RealtimeClientEvent.SessionStartEvent event) {
         requireState(State.CONNECTING, "session.start");
         if (event.agentCode() == null || event.agentCode().isBlank()) {
@@ -265,7 +269,7 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
         }
         resolvedModel = resolvedModel.withRealtimeSession(agentConfig.systemPrompt(), agentConfig.voiceConfigJson());
         RealtimeVoiceClient client = clientRegistry.requireRealtimeVoice(resolvedModel.providerType());
-        providerSession = client.open(resolvedModel, this::onProviderEvent);
+        providerSession = client.openTurnAware(resolvedModel, this::onProviderTurnEvent);
     }
 
     private void openCascadeProvider() {
@@ -287,73 +291,129 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
         }
         providerSession = new CascadeRealtimePipeline(
                 models.asr(), models.chat(), models.tts(),
-                agentConfig.systemPrompt(), clientRegistry, this::onProviderEvent);
+                agentConfig.systemPrompt(), clientRegistry, this::onProviderTurnEvent);
     }
 
     private record CascadeModels(ResolvedModel asr, ResolvedModel chat, ResolvedModel tts) {
     }
 
     private void speechStarted() {
-        requireState(State.READY, "input.speech_started");
-        currentTurnId = "turn-" + (++turnSequence);
+        if (state == State.ASSISTANT_RESPONDING) {
+            interruptActiveResponse("USER_SPEECH");
+        } else {
+            requireState(State.READY, "input.speech_started");
+        }
+
+        activeGeneration = new TurnGeneration("turn-" + (++turnSequence), turnSequence);
         assistantAudioStarted = false;
         state = State.USER_SPEAKING;
         if (providerSession != null) {
+            providerSession.beginTurn(activeGeneration.turnId(), activeGeneration.generation());
             providerSession.speechStarted();
+        }
+    }
+
+    private void interruptActiveResponse(String reason) {
+        TurnGeneration interrupted = activeGeneration;
+        if (interrupted == null) {
+            throw new IllegalStateException("Assistant response has no active turn generation");
+        }
+        boolean firstCancellation = interrupted.cancel();
+        if (!firstCancellation) {
+            return;
+        }
+
+        if (output != null) {
+            output.sendEvent(new RealtimeServerEvent.PlaybackStopEvent(
+                    sessionId, interrupted.turnId(), reason));
+        }
+        if (providerSession != null) {
+            providerSession.cancelCurrentResponse();
+        }
+        assistantAudioStarted = false;
+        if (output != null) {
+            output.sendEvent(new RealtimeServerEvent.AssistantInterruptedEvent(
+                    sessionId, interrupted.turnId(), reason));
         }
     }
 
     private void speechStopped() {
         requireState(State.USER_SPEAKING, "input.speech_stopped");
+        if (activeGeneration == null || activeGeneration.cancelled()) {
+            throw new IllegalStateException("Active turn generation is not available");
+        }
         state = State.ASSISTANT_RESPONDING;
         if (providerSession != null) {
             providerSession.speechStopped();
         }
     }
 
-    private synchronized void onProviderEvent(ProviderEvent event) {
+    private synchronized void onProviderTurnEvent(String turnId, long generation, ProviderEvent event) {
         if (event == null || state == State.CLOSED || output == null) {
             return;
         }
+        if ((turnId == null || turnId.isBlank() || generation <= 0)
+                && event instanceof ProviderEvent.ProviderError value) {
+            output.sendEvent(new RealtimeServerEvent.SessionErrorEvent(
+                    sessionId, value.code(), value.message()));
+            return;
+        }
+        if (turnId == null || turnId.isBlank() || generation <= 0) {
+            return;
+        }
+        handleProviderEvent(new TurnGeneration(turnId, generation), event);
+    }
+
+    private void handleProviderEvent(TurnGeneration callbackGeneration, ProviderEvent event) {
+        if (event == null || state == State.CLOSED || output == null) {
+            return;
+        }
+        if (!matchesActive(callbackGeneration)) {
+            return;
+        }
+
+        String turnId = callbackGeneration.turnId();
         if (event instanceof ProviderEvent.TranscriptDelta value) {
             output.sendEvent(new RealtimeServerEvent.InputTranscriptDeltaEvent(
-                    sessionId, requireTurnId(), value.text()));
+                    sessionId, turnId, value.text()));
         } else if (event instanceof ProviderEvent.TranscriptDone value) {
             output.sendEvent(new RealtimeServerEvent.InputTranscriptDoneEvent(
-                    sessionId, requireTurnId(), value.text()));
+                    sessionId, turnId, value.text()));
         } else if (event instanceof ProviderEvent.TextDelta value) {
             output.sendEvent(new RealtimeServerEvent.AssistantTextDeltaEvent(
-                    sessionId, requireTurnId(), value.text()));
+                    sessionId, turnId, value.text()));
         } else if (event instanceof ProviderEvent.TextDone value) {
             output.sendEvent(new RealtimeServerEvent.AssistantTextDoneEvent(
-                    sessionId, requireTurnId(), value.text()));
+                    sessionId, turnId, value.text()));
         } else if (event instanceof ProviderEvent.AudioDelta value) {
             if (!assistantAudioStarted) {
                 output.sendEvent(new RealtimeServerEvent.AssistantAudioStartedEvent(
-                        sessionId, requireTurnId(), PROVIDER_OUTPUT_AUDIO));
+                        sessionId, turnId, PROVIDER_OUTPUT_AUDIO));
                 assistantAudioStarted = true;
             }
             output.sendAudio(value.audio());
         } else if (event instanceof ProviderEvent.AudioDone) {
-            output.sendEvent(new RealtimeServerEvent.AssistantAudioDoneEvent(sessionId, requireTurnId()));
-            output.sendEvent(new RealtimeServerEvent.AssistantDoneEvent(sessionId, requireTurnId()));
+            output.sendEvent(new RealtimeServerEvent.AssistantAudioDoneEvent(sessionId, turnId));
+            output.sendEvent(new RealtimeServerEvent.AssistantDoneEvent(sessionId, turnId));
             if (state == State.ASSISTANT_RESPONDING) {
                 state = State.READY;
             }
+            assistantAudioStarted = false;
         } else if (event instanceof ProviderEvent.ToolCall value) {
             output.sendEvent(new RealtimeServerEvent.ToolStartedEvent(
-                    sessionId, requireTurnId(), value.id(), value.name()));
+                    sessionId, turnId, value.id(), value.name()));
         } else if (event instanceof ProviderEvent.ProviderError value) {
             output.sendEvent(new RealtimeServerEvent.SessionErrorEvent(
                     sessionId, value.code(), value.message()));
         }
     }
 
-    private String requireTurnId() {
-        if (currentTurnId == null) {
-            throw new IllegalStateException("Provider emitted turn-scoped output before user turn started");
-        }
-        return currentTurnId;
+    private boolean matchesActive(TurnGeneration callbackGeneration) {
+        return callbackGeneration != null
+                && activeGeneration != null
+                && !callbackGeneration.cancelled()
+                && !activeGeneration.cancelled()
+                && activeGeneration.matches(callbackGeneration.turnId(), callbackGeneration.generation());
     }
 
     private void transition(State expected, State next, String event) {

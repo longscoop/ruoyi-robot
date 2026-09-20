@@ -9,6 +9,7 @@ import com.robot.platform.ai.model.client.ModelClientRegistry;
 import com.robot.platform.ai.model.client.ResolvedModel;
 import com.robot.platform.ai.model.client.RealtimeProviderListener;
 import com.robot.platform.ai.model.client.RealtimeProviderSession;
+import com.robot.platform.ai.model.client.RealtimeTurnListener;
 import com.robot.platform.ai.model.client.TtsClient;
 import com.robot.platform.ai.model.client.TtsRequest;
 import com.robot.platform.ai.model.client.TtsStream;
@@ -33,7 +34,8 @@ public class CascadeRealtimePipeline implements RealtimeProviderSession {
     private final AsrClient asrClient;
     private final ChatModelClient chatClient;
     private final TtsClient ttsClient;
-    private final RealtimeProviderListener listener;
+    private final RealtimeProviderListener legacyListener;
+    private final RealtimeTurnListener turnListener;
 
     private final StringBuilder textBuffer = new StringBuilder();
     private final Deque<String> ttsQueue = new ArrayDeque<>();
@@ -41,6 +43,7 @@ public class CascadeRealtimePipeline implements RealtimeProviderSession {
     private AsrSession asrSession;
     private ChatStream chatStream;
     private TtsStream ttsStream;
+    private TurnStamp currentTurn;
     private boolean speaking;
     private boolean cancelled;
     private boolean chatDone;
@@ -54,15 +57,45 @@ public class CascadeRealtimePipeline implements RealtimeProviderSession {
                                    String systemPrompt,
                                    ModelClientRegistry registry,
                                    RealtimeProviderListener listener) {
+        this(asrModel, chatModel, ttsModel, systemPrompt, registry,
+                Objects.requireNonNull(listener, "listener"), null);
+    }
+
+    public CascadeRealtimePipeline(ResolvedModel asrModel,
+                                   ResolvedModel chatModel,
+                                   ResolvedModel ttsModel,
+                                   String systemPrompt,
+                                   ModelClientRegistry registry,
+                                   RealtimeTurnListener listener) {
+        this(asrModel, chatModel, ttsModel, systemPrompt, registry,
+                null, Objects.requireNonNull(listener, "listener"));
+    }
+
+    private CascadeRealtimePipeline(ResolvedModel asrModel,
+                                    ResolvedModel chatModel,
+                                    ResolvedModel ttsModel,
+                                    String systemPrompt,
+                                    ModelClientRegistry registry,
+                                    RealtimeProviderListener legacyListener,
+                                    RealtimeTurnListener turnListener) {
         this.asrModel = Objects.requireNonNull(asrModel, "asrModel");
         this.chatModel = Objects.requireNonNull(chatModel, "chatModel");
         this.ttsModel = Objects.requireNonNull(ttsModel, "ttsModel");
         this.systemPrompt = systemPrompt;
         Objects.requireNonNull(registry, "registry");
-        this.listener = Objects.requireNonNull(listener, "listener");
+        this.legacyListener = legacyListener;
+        this.turnListener = turnListener;
         this.asrClient = registry.requireAsr(asrModel.providerType());
         this.chatClient = registry.requireChat(chatModel.providerType());
         this.ttsClient = registry.requireTts(ttsModel.providerType());
+    }
+
+    @Override
+    public synchronized void beginTurn(String turnId, long generation) {
+        if (turnId == null || turnId.isBlank() || generation <= 0) {
+            throw new IllegalArgumentException("Valid turnId and generation are required");
+        }
+        currentTurn = new TurnStamp(turnId, generation);
     }
 
     @Override
@@ -72,8 +105,9 @@ public class CascadeRealtimePipeline implements RealtimeProviderSession {
             throw new IllegalStateException("Cascade user speech already started");
         }
         resetTurn();
+        TurnStamp turn = turnListener == null ? null : requireCurrentTurn();
         speaking = true;
-        asrSession = asrClient.open(asrModel, this::onAsrEvent);
+        asrSession = asrClient.open(asrModel, event -> onAsrEvent(turn, event));
         asrSession.speechStarted();
     }
 
@@ -125,48 +159,48 @@ public class CascadeRealtimePipeline implements RealtimeProviderSession {
         closed = true;
     }
 
-    private synchronized void onAsrEvent(ProviderEvent event) {
-        if (cancelled || closed) {
+    private synchronized void onAsrEvent(TurnStamp turn, ProviderEvent event) {
+        if (cancelled || closed || !matchesCurrent(turn)) {
             return;
         }
         if (event instanceof ProviderEvent.TranscriptDelta) {
-            listener.onEvent(event);
+            emit(turn, event);
             return;
         }
         if (event instanceof ProviderEvent.TranscriptDone transcript) {
-            listener.onEvent(event);
+            emit(turn, event);
             if (!transcript.text().isBlank() && chatStream == null) {
-                startChat(transcript.text());
+                startChat(turn, transcript.text());
             }
             return;
         }
         if (event instanceof ProviderEvent.ProviderError) {
-            listener.onEvent(event);
+            emit(turn, event);
         }
     }
 
-    private void startChat(String transcript) {
+    private void startChat(TurnStamp turn, String transcript) {
         List<ChatRequest.ChatMessage> messages = new ArrayList<>();
         if (systemPrompt != null && !systemPrompt.isBlank()) {
             messages.add(new ChatRequest.ChatMessage("system", systemPrompt));
         }
         messages.add(new ChatRequest.ChatMessage("user", transcript));
-        chatStream = chatClient.stream(new ChatRequest(chatModel, messages), this::onChatEvent);
+        chatStream = chatClient.stream(new ChatRequest(chatModel, messages), event -> onChatEvent(turn, event));
     }
 
-    private synchronized void onChatEvent(ProviderEvent event) {
-        if (cancelled || closed) {
+    private synchronized void onChatEvent(TurnStamp turn, ProviderEvent event) {
+        if (cancelled || closed || !matchesCurrent(turn)) {
             return;
         }
         if (event instanceof ProviderEvent.TextDelta text) {
-            listener.onEvent(event);
+            emit(turn, event);
             appendSpeakableText(text.text());
             return;
         }
         if (event instanceof ProviderEvent.TextDone) {
             if (!textDoneForwarded) {
                 textDoneForwarded = true;
-                listener.onEvent(event);
+                emit(turn, event);
             }
             flushRemainder();
             chatDone = true;
@@ -177,7 +211,7 @@ public class CascadeRealtimePipeline implements RealtimeProviderSession {
                 || event instanceof ProviderEvent.ToolCall
                 || event instanceof ProviderEvent.Usage
                 || event instanceof ProviderEvent.ProviderError) {
-            listener.onEvent(event);
+            emit(turn, event);
         }
     }
 
@@ -209,7 +243,7 @@ public class CascadeRealtimePipeline implements RealtimeProviderSession {
 
     private void enqueueTts(String text) {
         if (ttsQueue.size() >= MAX_TTS_QUEUE) {
-            listener.onEvent(new ProviderEvent.ProviderError(
+            emit(currentTurn, new ProviderEvent.ProviderError(
                     "cascade_tts_queue_full", "Cascade TTS queue is full", false));
             cancelCurrentResponse();
             return;
@@ -223,19 +257,21 @@ public class CascadeRealtimePipeline implements RealtimeProviderSession {
         }
         String text = ttsQueue.removeFirst();
         final TtsStream[] holder = new TtsStream[1];
-        TtsStream stream = ttsClient.stream(new TtsRequest(ttsModel, text), event -> onTtsEvent(holder[0], event));
+        TurnStamp turn = currentTurn;
+        TtsStream stream = ttsClient.stream(new TtsRequest(ttsModel, text),
+                event -> onTtsEvent(turn, holder[0], event));
         holder[0] = stream;
         ttsStream = stream;
     }
 
-    private synchronized void onTtsEvent(TtsStream source, ProviderEvent event) {
-        if (cancelled || closed || source == null || source != ttsStream) {
+    private synchronized void onTtsEvent(TurnStamp turn, TtsStream source, ProviderEvent event) {
+        if (cancelled || closed || !matchesCurrent(turn) || source == null || source != ttsStream) {
             return;
         }
         if (event instanceof ProviderEvent.AudioDelta
                 || event instanceof ProviderEvent.ProviderError
                 || event instanceof ProviderEvent.Usage) {
-            listener.onEvent(event);
+            emit(turn, event);
             return;
         }
         if (event instanceof ProviderEvent.AudioDone) {
@@ -248,7 +284,7 @@ public class CascadeRealtimePipeline implements RealtimeProviderSession {
     private void maybeFinishAudio() {
         if (chatDone && ttsStream == null && ttsQueue.isEmpty() && textBuffer.isEmpty() && !audioDoneEmitted) {
             audioDoneEmitted = true;
-            listener.onEvent(new ProviderEvent.AudioDone());
+            emit(currentTurn, new ProviderEvent.AudioDone());
         }
     }
 
@@ -268,6 +304,33 @@ public class CascadeRealtimePipeline implements RealtimeProviderSession {
         if (closed) {
             throw new IllegalStateException("Cascade pipeline is closed");
         }
+    }
+
+    private boolean matchesCurrent(TurnStamp turn) {
+        return turnListener == null || (turn != null && turn.equals(currentTurn));
+    }
+
+    private TurnStamp requireCurrentTurn() {
+        if (currentTurn == null) {
+            throw new IllegalStateException("Cascade turn context is not initialized");
+        }
+        return currentTurn;
+    }
+
+    private void emit(TurnStamp turn, ProviderEvent event) {
+        if (turnListener != null) {
+            TurnStamp actual = turn == null ? currentTurn : turn;
+            if (actual != null) {
+                turnListener.onEvent(actual.turnId(), actual.generation(), event);
+            } else {
+                turnListener.onEvent(null, 0L, event);
+            }
+        } else {
+            legacyListener.onEvent(event);
+        }
+    }
+
+    private record TurnStamp(String turnId, long generation) {
     }
 
     private static int firstSentenceBoundary(CharSequence value) {
