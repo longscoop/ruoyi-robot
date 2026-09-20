@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Function;
 
 public class CascadeRealtimePipeline implements RealtimeProviderSession {
 
@@ -36,6 +37,7 @@ public class CascadeRealtimePipeline implements RealtimeProviderSession {
     private final TtsClient ttsClient;
     private final RealtimeProviderListener legacyListener;
     private final RealtimeTurnListener turnListener;
+    private final Function<String, String> memoryContextProvider;
 
     private final StringBuilder textBuffer = new StringBuilder();
     private final Deque<String> ttsQueue = new ArrayDeque<>();
@@ -58,7 +60,7 @@ public class CascadeRealtimePipeline implements RealtimeProviderSession {
                                    ModelClientRegistry registry,
                                    RealtimeProviderListener listener) {
         this(asrModel, chatModel, ttsModel, systemPrompt, registry,
-                Objects.requireNonNull(listener, "listener"), null);
+                Objects.requireNonNull(listener, "listener"), null, text -> "");
     }
 
     public CascadeRealtimePipeline(ResolvedModel asrModel,
@@ -68,7 +70,14 @@ public class CascadeRealtimePipeline implements RealtimeProviderSession {
                                    ModelClientRegistry registry,
                                    RealtimeTurnListener listener) {
         this(asrModel, chatModel, ttsModel, systemPrompt, registry,
-                null, Objects.requireNonNull(listener, "listener"));
+                null, Objects.requireNonNull(listener, "listener"), text -> "");
+    }
+
+    public CascadeRealtimePipeline(ResolvedModel asrModel, ResolvedModel chatModel, ResolvedModel ttsModel,
+                                   String systemPrompt, ModelClientRegistry registry,
+                                   RealtimeTurnListener listener, Function<String, String> memoryContextProvider) {
+        this(asrModel, chatModel, ttsModel, systemPrompt, registry, null,
+                Objects.requireNonNull(listener, "listener"), memoryContextProvider);
     }
 
     private CascadeRealtimePipeline(ResolvedModel asrModel,
@@ -77,7 +86,8 @@ public class CascadeRealtimePipeline implements RealtimeProviderSession {
                                     String systemPrompt,
                                     ModelClientRegistry registry,
                                     RealtimeProviderListener legacyListener,
-                                    RealtimeTurnListener turnListener) {
+                                    RealtimeTurnListener turnListener,
+                                    Function<String, String> memoryContextProvider) {
         this.asrModel = Objects.requireNonNull(asrModel, "asrModel");
         this.chatModel = Objects.requireNonNull(chatModel, "chatModel");
         this.ttsModel = Objects.requireNonNull(ttsModel, "ttsModel");
@@ -85,6 +95,7 @@ public class CascadeRealtimePipeline implements RealtimeProviderSession {
         Objects.requireNonNull(registry, "registry");
         this.legacyListener = legacyListener;
         this.turnListener = turnListener;
+        this.memoryContextProvider = memoryContextProvider == null ? text -> "" : memoryContextProvider;
         this.asrClient = registry.requireAsr(asrModel.providerType());
         this.chatClient = registry.requireChat(chatModel.providerType());
         this.ttsClient = registry.requireTts(ttsModel.providerType());
@@ -184,6 +195,8 @@ public class CascadeRealtimePipeline implements RealtimeProviderSession {
         if (systemPrompt != null && !systemPrompt.isBlank()) {
             messages.add(new ChatRequest.ChatMessage("system", systemPrompt));
         }
+        String memoryContext = memoryContextProvider.apply(transcript);
+        if (memoryContext != null && !memoryContext.isBlank()) messages.add(new ChatRequest.ChatMessage("system", memoryContext));
         messages.add(new ChatRequest.ChatMessage("user", transcript));
         chatStream = chatClient.stream(new ChatRequest(chatModel, messages), event -> onChatEvent(turn, event));
     }

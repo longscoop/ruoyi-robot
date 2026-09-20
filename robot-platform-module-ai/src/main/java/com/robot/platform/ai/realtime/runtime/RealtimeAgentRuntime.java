@@ -8,6 +8,7 @@ import com.robot.platform.ai.memory.identity.ConversationIdentity;
 import com.robot.platform.ai.memory.identity.ConversationIdentityResolver;
 import com.robot.platform.ai.memory.extract.MemoryExtractor;
 import com.robot.platform.ai.memory.pipeline.MemoryPipeline;
+import com.robot.platform.ai.memory.context.MemoryContextBuilder;
 import com.robot.platform.ai.model.client.ModelClientRegistry;
 import com.robot.platform.ai.model.client.ResolvedModel;
 import com.robot.platform.ai.model.client.RealtimeProviderSession;
@@ -51,6 +52,7 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
     private final ModelClientRegistry clientRegistry;
     private final ConversationIdentityResolver identityResolver;
     private final MemoryPipeline memoryPipeline;
+    private final MemoryContextBuilder memoryContextBuilder;
 
     private State state = State.CONNECTING;
     private AiAgentConfig agentConfig;
@@ -71,7 +73,7 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
                                 AiAgentRobotBindingService bindingService,
                                 AiAgentService agentService,
                                 RealtimeModelRouter router) {
-        this("standalone", deviceSession, bindingService, agentService, router, null, null, null, null);
+        this("standalone", deviceSession, bindingService, agentService, router, null, null, null, null, null);
     }
 
     public RealtimeAgentRuntime(String sessionId,
@@ -81,7 +83,7 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
                                 RealtimeModelRouter router,
                                 ResolvedModelResolver modelResolver,
                                 ModelClientRegistry clientRegistry) {
-        this(sessionId, deviceSession, bindingService, agentService, router, modelResolver, clientRegistry, null, null);
+        this(sessionId, deviceSession, bindingService, agentService, router, modelResolver, clientRegistry, null, null, null);
     }
 
     public RealtimeAgentRuntime(String sessionId,
@@ -92,7 +94,7 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
                                 ResolvedModelResolver modelResolver,
                                 ModelClientRegistry clientRegistry,
                                 ConversationIdentityResolver identityResolver) {
-        this(sessionId, deviceSession, bindingService, agentService, router, modelResolver, clientRegistry, identityResolver, null);
+        this(sessionId, deviceSession, bindingService, agentService, router, modelResolver, clientRegistry, identityResolver, null, null);
     }
 
     public RealtimeAgentRuntime(String sessionId, DeviceSession deviceSession,
@@ -100,6 +102,14 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
                                 RealtimeModelRouter router, ResolvedModelResolver modelResolver,
                                 ModelClientRegistry clientRegistry, ConversationIdentityResolver identityResolver,
                                 MemoryPipeline memoryPipeline) {
+        this(sessionId, deviceSession, bindingService, agentService, router, modelResolver, clientRegistry, identityResolver, memoryPipeline, null);
+    }
+
+    public RealtimeAgentRuntime(String sessionId, DeviceSession deviceSession,
+                                AiAgentRobotBindingService bindingService, AiAgentService agentService,
+                                RealtimeModelRouter router, ResolvedModelResolver modelResolver,
+                                ModelClientRegistry clientRegistry, ConversationIdentityResolver identityResolver,
+                                MemoryPipeline memoryPipeline, MemoryContextBuilder memoryContextBuilder) {
         if (sessionId == null || sessionId.isBlank()) {
             throw new IllegalArgumentException("sessionId must not be blank");
         }
@@ -112,6 +122,7 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
         this.clientRegistry = clientRegistry;
         this.identityResolver = identityResolver;
         this.memoryPipeline = memoryPipeline;
+        this.memoryContextBuilder = memoryContextBuilder;
     }
 
     public synchronized void attachOutput(RealtimeRuntimeOutput output) {
@@ -305,7 +316,8 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
         if (resolvedModel.modelId() != modelId) {
             throw new IllegalStateException("Resolved model does not match realtime route");
         }
-        resolvedModel = resolvedModel.withRealtimeSession(agentConfig.systemPrompt(), agentConfig.voiceConfigJson());
+        String memoryContext = buildMemoryContext("");
+        resolvedModel = resolvedModel.withRealtimeSession(mergeSystemContext(agentConfig.systemPrompt(), memoryContext), agentConfig.voiceConfigJson());
         RealtimeVoiceClient client = clientRegistry.requireRealtimeVoice(resolvedModel.providerType());
         providerSession = client.openTurnAware(resolvedModel, this::onProviderTurnEvent);
     }
@@ -329,7 +341,8 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
         }
         providerSession = new CascadeRealtimePipeline(
                 models.asr(), models.chat(), models.tts(),
-                agentConfig.systemPrompt(), clientRegistry, this::onProviderTurnEvent);
+                agentConfig.systemPrompt(), clientRegistry, this::onProviderTurnEvent,
+                text -> buildMemoryContext(text));
     }
 
     private record CascadeModels(ResolvedModel asr, ResolvedModel chat, ResolvedModel tts) {
@@ -449,6 +462,16 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
             output.sendEvent(new RealtimeServerEvent.SessionErrorEvent(
                     sessionId, value.code(), value.message()));
         }
+    }
+
+    private String buildMemoryContext(String userText) {
+        if (memoryContextBuilder == null || conversationIdentity == null || agentConfig == null) return "";
+        return memoryContextBuilder.buildContext(conversationIdentity, agentConfig, userText);
+    }
+
+    private static String mergeSystemContext(String prompt, String memory) {
+        if (memory == null || memory.isBlank()) return prompt;
+        return (prompt == null || prompt.isBlank()) ? memory : prompt + "\n\n" + memory;
     }
 
     private void submitFinalizedTurn() {

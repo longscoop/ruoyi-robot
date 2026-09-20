@@ -4,6 +4,7 @@ import com.robot.platform.ai.agent.service.AiAgentRobotBindingService;
 import com.robot.platform.ai.agent.service.AiAgentService;
 import com.robot.platform.ai.memory.identity.ConversationIdentityResolver;
 import com.robot.platform.ai.memory.pipeline.MemoryPipeline;
+import com.robot.platform.ai.memory.context.MemoryContextBuilder;
 import com.robot.platform.ai.model.client.ModelClientRegistry;
 import com.robot.platform.ai.realtime.gateway.AiRealtimeWebSocketHandler;
 import com.robot.platform.device.auth.service.DeviceSession;
@@ -24,6 +25,7 @@ public class RealtimeAgentRuntimeManager implements AiRealtimeWebSocketHandler.R
     private final ModelClientRegistry clientRegistry;
     private final ConversationIdentityResolver identityResolver;
     private final MemoryPipeline memoryPipeline;
+    private final MemoryContextBuilder memoryContextBuilder;
     private final ConcurrentMap<String, RealtimeAgentRuntime> runtimes = new ConcurrentHashMap<>();
 
     @Autowired
@@ -33,7 +35,8 @@ public class RealtimeAgentRuntimeManager implements AiRealtimeWebSocketHandler.R
                                        ResolvedModelResolver modelResolver,
                                        ModelClientRegistry clientRegistry,
                                        ConversationIdentityResolver identityResolver,
-                                       MemoryPipeline memoryPipeline) {
+                                       MemoryPipeline memoryPipeline,
+                                       MemoryContextBuilder memoryContextBuilder) {
         this.bindingService = Objects.requireNonNull(bindingService, "bindingService");
         this.agentService = Objects.requireNonNull(agentService, "agentService");
         this.router = Objects.requireNonNull(router, "router");
@@ -41,6 +44,7 @@ public class RealtimeAgentRuntimeManager implements AiRealtimeWebSocketHandler.R
         this.clientRegistry = Objects.requireNonNull(clientRegistry, "clientRegistry");
         this.identityResolver = Objects.requireNonNull(identityResolver, "identityResolver");
         this.memoryPipeline = Objects.requireNonNull(memoryPipeline, "memoryPipeline");
+        this.memoryContextBuilder = Objects.requireNonNull(memoryContextBuilder, "memoryContextBuilder");
     }
 
     public RealtimeAgentRuntimeManager(AiAgentRobotBindingService bindingService,
@@ -53,6 +57,7 @@ public class RealtimeAgentRuntimeManager implements AiRealtimeWebSocketHandler.R
         this.clientRegistry = null;
         this.identityResolver = null;
         this.memoryPipeline = null;
+        this.memoryContextBuilder = null;
     }
 
     @Override
@@ -60,7 +65,7 @@ public class RealtimeAgentRuntimeManager implements AiRealtimeWebSocketHandler.R
         requireSessionId(webSocketSessionId);
         RealtimeAgentRuntime runtime = new RealtimeAgentRuntime(
                 webSocketSessionId, deviceSession, bindingService, agentService, router,
-                modelResolver, clientRegistry, identityResolver, memoryPipeline);
+                modelResolver, clientRegistry, identityResolver, memoryPipeline, memoryContextBuilder);
         RealtimeAgentRuntime existing = runtimes.putIfAbsent(webSocketSessionId, runtime);
         if (existing != null) {
             throw new IllegalStateException("Realtime runtime already exists for WebSocket session");
