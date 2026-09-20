@@ -1,8 +1,8 @@
 package com.robot.platform.ai.digitalhuman.realtime;
 import com.robot.platform.ai.agent.dal.dataobject.AiAgentDO;import com.robot.platform.ai.agent.dal.mysql.AiAgentMapper;
 import com.robot.platform.ai.digitalhuman.dal.dataobject.AiDigitalHumanDO;import com.robot.platform.ai.digitalhuman.dal.mysql.AiDigitalHumanMapper;
-import static com.robot.platform.framework.common.exception.util.ServiceExceptionUtil.invalidParamException;
-public class DigitalHumanSessionResolver {
+import org.springframework.stereotype.Component;\nimport static com.robot.platform.framework.common.exception.util.ServiceExceptionUtil.invalidParamException;
+@Component\npublic class DigitalHumanSessionResolver {
  private final AiDigitalHumanMapper humans;private final AiAgentMapper agents;
  public DigitalHumanSessionResolver(AiDigitalHumanMapper h,AiAgentMapper a){humans=h;agents=a;}
  public Resolved resolve(long tenantId,String digitalHumanCode,String requestedAgentCode){

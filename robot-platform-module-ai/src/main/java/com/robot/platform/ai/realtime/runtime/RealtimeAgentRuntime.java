@@ -4,7 +4,7 @@ import com.robot.platform.ai.agent.dal.dataobject.AiAgentDO;
 import com.robot.platform.ai.agent.service.AiAgentConfig;
 import com.robot.platform.ai.agent.service.AiAgentRobotBindingService;
 import com.robot.platform.ai.agent.service.AiAgentService;
-import com.robot.platform.ai.memory.identity.ConversationIdentity;
+import com.robot.platform.ai.memory.identity.ConversationIdentity;\nimport com.robot.platform.ai.digitalhuman.dal.dataobject.AiDigitalHumanDO;\nimport com.robot.platform.ai.digitalhuman.realtime.DigitalHumanSessionResolver;\nimport com.robot.platform.ai.digitalhuman.realtime.DigitalHumanStateMapper;\nimport com.robot.platform.framework.common.util.json.JsonUtils;
 import com.robot.platform.ai.memory.identity.ConversationIdentityResolver;
 import com.robot.platform.ai.memory.extract.MemoryExtractor;
 import com.robot.platform.ai.memory.pipeline.MemoryPipeline;
@@ -67,7 +67,7 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
     private TurnGeneration activeGeneration;
     private boolean assistantAudioStarted;
     private String finalizedUserText;
-    private String finalizedAssistantText;
+    private String finalizedAssistantText;\n    private DigitalHumanSessionResolver digitalHumanResolver;\n    private AiDigitalHumanDO digitalHuman;
 
     public RealtimeAgentRuntime(DeviceSession deviceSession,
                                 AiAgentRobotBindingService bindingService,
@@ -270,7 +270,7 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
             throw new IllegalArgumentException("session.start audio format must not be null");
         }
 
-        AiAgentConfig resolved = withTrustedTenant(() -> {
+        if (event.digitalHumanCode() != null && !event.digitalHumanCode().isBlank()) {\n            if (digitalHumanResolver == null) throw new IllegalStateException("Digital human resolver is not available");\n            DigitalHumanSessionResolver.Resolved dh = withTrustedTenant(() -> digitalHumanResolver.resolve(deviceSession.tenantId(), event.digitalHumanCode(), event.agentCode()));\n            digitalHuman = dh.digitalHuman();\n        }\n\n        AiAgentConfig resolved = withTrustedTenant(() -> {
             AiAgentDO agent = bindingService.requireAgentForRobot(
                     deviceSession.tenantId(), deviceSession.robotId(), event.agentCode());
             if (agent == null || agent.getId() == null) {
@@ -302,7 +302,7 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
         }
         state = State.READY;
         if (output != null) {
-            output.sendEvent(new RealtimeServerEvent.SessionCreatedEvent(sessionId, route.mode().name()));
+            output.sendEvent(new RealtimeServerEvent.SessionCreatedEvent(sessionId, route.mode().name()));\n            if (digitalHuman != null) {\n                var safe = new java.util.LinkedHashMap<String,Object>(); safe.put("id",digitalHuman.getId());safe.put("code",digitalHuman.getCode());safe.put("avatarType",digitalHuman.getAvatarType());safe.put("avatarUrl",digitalHuman.getAvatarUrl());safe.put("avatarResourceUrl",digitalHuman.getAvatarResourceUrl());safe.put("voiceModelId",digitalHuman.getVoiceModelId());safe.put("voiceId",digitalHuman.getVoiceId());safe.put("lipSyncMode",digitalHuman.getLipSyncMode());safe.put("welcomeText",digitalHuman.getWelcomeText());safe.put("interruptEnabled",digitalHuman.getInterruptEnabled());\n                output.sendEvent(new RealtimeServerEvent.DigitalHumanConfigEvent(sessionId, JsonUtils.toJsonString(safe)));\n                output.sendEvent(new RealtimeServerEvent.DigitalHumanStateEvent(sessionId, null, "IDLE", null));\n            }
         }
     }
 
