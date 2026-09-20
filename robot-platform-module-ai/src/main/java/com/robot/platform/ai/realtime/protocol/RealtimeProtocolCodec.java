@@ -11,9 +11,9 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class RealtimeProtocolCodec {
 
-    private static final Set<String> SESSION_START_FIELDS = Set.of("type", "agentCode", "identity", "audio");
+    private static final Set<String> SESSION_START_FIELDS = Set.of("type", "agentCode", "identity", "audio", "digitalHumanCode", "clientCapabilities");
     private static final Set<String> IDENTITY_FIELDS = Set.of("memberId", "type", "confidence");
-    private static final Set<String> AUDIO_FIELDS = Set.of("codec", "sampleRate", "channels");
+    private static final Set<String> AUDIO_FIELDS = Set.of("codec", "sampleRate", "channels");\n    private static final Set<String> CAPABILITY_FIELDS = Set.of("viseme", "audioLevelLipSync");
 
     private final Clock clock;
     private final AtomicLong sequence = new AtomicLong();
@@ -79,10 +79,10 @@ public class RealtimeProtocolCodec {
         String agentCode = requireText(root, "agentCode");
         RealtimeClientEvent.CandidateIdentity identity = decodeIdentity(root.get("identity"));
         RealtimeAudioFormat audio = decodeAudio(root.get("audio"));
-        return new RealtimeClientEvent.SessionStartEvent(agentCode, identity, audio);
+        String digitalHumanCode = optionalText(root, "digitalHumanCode");\n        RealtimeClientEvent.ClientCapabilities capabilities = decodeCapabilities(root.get("clientCapabilities"));\n        return new RealtimeClientEvent.SessionStartEvent(agentCode, identity, audio, digitalHumanCode, capabilities);
     }
 
-    private static RealtimeClientEvent.CandidateIdentity decodeIdentity(JsonNode identity) {
+    private static RealtimeClientEvent.ClientCapabilities decodeCapabilities(JsonNode node) {\n        if (node == null || node.isNull()) return null;\n        if (!node.isObject()) throw new IllegalArgumentException("clientCapabilities must be an object");\n        rejectUnknownFields(node, CAPABILITY_FIELDS, "clientCapabilities");\n        return new RealtimeClientEvent.ClientCapabilities(node.path("viseme").asBoolean(false), node.path("audioLevelLipSync").asBoolean(false));\n    }\n\n    private static RealtimeClientEvent.CandidateIdentity decodeIdentity(JsonNode identity) {
         if (identity == null || identity.isNull()) {
             return null;
         }
