@@ -1,0 +1,3 @@
+import type{DigitalHumanPreviewVO,DigitalHumanState}from'@/api/ai/digital-human'
+export interface DigitalHumanRenderer{load(config:DigitalHumanPreviewVO):void;setState(state:DigitalHumanState,actionCode?:string):void;pushViseme(timeline:unknown):void;pushAudioLevel(level:number):void;reset():void}
+export class Static2DRenderer implements DigitalHumanRenderer{config?:DigitalHumanPreviewVO;state:DigitalHumanState='IDLE';audioLevel=0;load(c:DigitalHumanPreviewVO){this.config=c}setState(s:DigitalHumanState){this.state=s}pushViseme(_:unknown){}pushAudioLevel(v:number){this.audioLevel=Math.max(0,Math.min(1,v))}reset(){this.state='IDLE';this.audioLevel=0}}

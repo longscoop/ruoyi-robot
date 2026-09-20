@@ -1,0 +1,1 @@
+import{describe,it,expect}from'vitest';import{Static2DRenderer}from'./DigitalHumanRenderer';describe('Static2DRenderer',()=>{it('clamps audio and resets state',()=>{const r=new Static2DRenderer();r.setState('SPEAKING');r.pushAudioLevel(2);expect(r.audioLevel).toBe(1);r.reset();expect(r.state).toBe('IDLE')})})
