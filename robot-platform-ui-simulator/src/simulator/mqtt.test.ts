@@ -1,0 +1,1 @@
+import{describe,it,expect}from'vitest';import{topics}from'./mqtt';describe('mqtt topic policy',()=>{it('matches canonical backend topics',()=>{const t=topics({tenantNamespace:'t1',productKey:'p1',deviceSn:'d1'});expect(t.command).toBe('robot/t1/p1/d1/command');expect(t.state).toBe('robot/t1/p1/d1/state')})})
