@@ -6,6 +6,8 @@ import com.robot.platform.ai.agent.service.AiAgentRobotBindingService;
 import com.robot.platform.ai.agent.service.AiAgentService;
 import com.robot.platform.ai.memory.identity.ConversationIdentity;
 import com.robot.platform.ai.memory.identity.ConversationIdentityResolver;
+import com.robot.platform.ai.memory.extract.MemoryExtractor;
+import com.robot.platform.ai.memory.pipeline.MemoryPipeline;
 import com.robot.platform.ai.model.client.ModelClientRegistry;
 import com.robot.platform.ai.model.client.ResolvedModel;
 import com.robot.platform.ai.model.client.RealtimeProviderSession;
@@ -48,6 +50,7 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
     private final ResolvedModelResolver modelResolver;
     private final ModelClientRegistry clientRegistry;
     private final ConversationIdentityResolver identityResolver;
+    private final MemoryPipeline memoryPipeline;
 
     private State state = State.CONNECTING;
     private AiAgentConfig agentConfig;
@@ -61,12 +64,14 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
     private long turnSequence;
     private TurnGeneration activeGeneration;
     private boolean assistantAudioStarted;
+    private String finalizedUserText;
+    private String finalizedAssistantText;
 
     public RealtimeAgentRuntime(DeviceSession deviceSession,
                                 AiAgentRobotBindingService bindingService,
                                 AiAgentService agentService,
                                 RealtimeModelRouter router) {
-        this("standalone", deviceSession, bindingService, agentService, router, null, null, null);
+        this("standalone", deviceSession, bindingService, agentService, router, null, null, null, null);
     }
 
     public RealtimeAgentRuntime(String sessionId,
@@ -76,7 +81,7 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
                                 RealtimeModelRouter router,
                                 ResolvedModelResolver modelResolver,
                                 ModelClientRegistry clientRegistry) {
-        this(sessionId, deviceSession, bindingService, agentService, router, modelResolver, clientRegistry, null);
+        this(sessionId, deviceSession, bindingService, agentService, router, modelResolver, clientRegistry, null, null);
     }
 
     public RealtimeAgentRuntime(String sessionId,
@@ -87,6 +92,14 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
                                 ResolvedModelResolver modelResolver,
                                 ModelClientRegistry clientRegistry,
                                 ConversationIdentityResolver identityResolver) {
+        this(sessionId, deviceSession, bindingService, agentService, router, modelResolver, clientRegistry, identityResolver, null);
+    }
+
+    public RealtimeAgentRuntime(String sessionId, DeviceSession deviceSession,
+                                AiAgentRobotBindingService bindingService, AiAgentService agentService,
+                                RealtimeModelRouter router, ResolvedModelResolver modelResolver,
+                                ModelClientRegistry clientRegistry, ConversationIdentityResolver identityResolver,
+                                MemoryPipeline memoryPipeline) {
         if (sessionId == null || sessionId.isBlank()) {
             throw new IllegalArgumentException("sessionId must not be blank");
         }
@@ -98,6 +111,7 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
         this.modelResolver = modelResolver;
         this.clientRegistry = clientRegistry;
         this.identityResolver = identityResolver;
+        this.memoryPipeline = memoryPipeline;
     }
 
     public synchronized void attachOutput(RealtimeRuntimeOutput output) {
@@ -330,6 +344,8 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
 
         activeGeneration = new TurnGeneration("turn-" + (++turnSequence), turnSequence);
         assistantAudioStarted = false;
+        finalizedUserText = null;
+        finalizedAssistantText = null;
         state = State.USER_SPEAKING;
         if (providerSession != null) {
             providerSession.beginTurn(activeGeneration.turnId(), activeGeneration.generation());
@@ -401,12 +417,14 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
             output.sendEvent(new RealtimeServerEvent.InputTranscriptDeltaEvent(
                     sessionId, turnId, value.text()));
         } else if (event instanceof ProviderEvent.TranscriptDone value) {
+            finalizedUserText = value.text();
             output.sendEvent(new RealtimeServerEvent.InputTranscriptDoneEvent(
                     sessionId, turnId, value.text()));
         } else if (event instanceof ProviderEvent.TextDelta value) {
             output.sendEvent(new RealtimeServerEvent.AssistantTextDeltaEvent(
                     sessionId, turnId, value.text()));
         } else if (event instanceof ProviderEvent.TextDone value) {
+            finalizedAssistantText = value.text();
             output.sendEvent(new RealtimeServerEvent.AssistantTextDoneEvent(
                     sessionId, turnId, value.text()));
         } else if (event instanceof ProviderEvent.AudioDelta value) {
@@ -423,6 +441,7 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
                 state = State.READY;
             }
             assistantAudioStarted = false;
+            submitFinalizedTurn();
         } else if (event instanceof ProviderEvent.ToolCall value) {
             output.sendEvent(new RealtimeServerEvent.ToolStartedEvent(
                     sessionId, turnId, value.id(), value.name()));
@@ -430,6 +449,13 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
             output.sendEvent(new RealtimeServerEvent.SessionErrorEvent(
                     sessionId, value.code(), value.message()));
         }
+    }
+
+    private void submitFinalizedTurn() {
+        if (memoryPipeline == null || conversationIdentity == null || agentConfig == null
+                || finalizedUserText == null || finalizedAssistantText == null) return;
+        memoryPipeline.submit(new MemoryExtractor.CompletedTurn(finalizedUserText, finalizedAssistantText),
+                conversationIdentity, agentConfig);
     }
 
     private boolean matchesActive(TurnGeneration callbackGeneration) {
