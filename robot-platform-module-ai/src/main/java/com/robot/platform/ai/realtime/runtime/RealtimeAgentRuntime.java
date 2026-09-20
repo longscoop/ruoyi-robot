@@ -4,6 +4,8 @@ import com.robot.platform.ai.agent.dal.dataobject.AiAgentDO;
 import com.robot.platform.ai.agent.service.AiAgentConfig;
 import com.robot.platform.ai.agent.service.AiAgentRobotBindingService;
 import com.robot.platform.ai.agent.service.AiAgentService;
+import com.robot.platform.ai.memory.identity.ConversationIdentity;
+import com.robot.platform.ai.memory.identity.ConversationIdentityResolver;
 import com.robot.platform.ai.model.client.ModelClientRegistry;
 import com.robot.platform.ai.model.client.ResolvedModel;
 import com.robot.platform.ai.model.client.RealtimeProviderSession;
@@ -45,11 +47,13 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
     private final RealtimeModelRouter router;
     private final ResolvedModelResolver modelResolver;
     private final ModelClientRegistry clientRegistry;
+    private final ConversationIdentityResolver identityResolver;
 
     private State state = State.CONNECTING;
     private AiAgentConfig agentConfig;
     private RealtimeRoute route;
     private RealtimeClientEvent.CandidateIdentity candidateIdentity;
+    private ConversationIdentity conversationIdentity;
     private RealtimeAudioFormat audioFormat;
     private CloseReason closeReason;
     private RealtimeRuntimeOutput output;
@@ -62,7 +66,7 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
                                 AiAgentRobotBindingService bindingService,
                                 AiAgentService agentService,
                                 RealtimeModelRouter router) {
-        this("standalone", deviceSession, bindingService, agentService, router, null, null);
+        this("standalone", deviceSession, bindingService, agentService, router, null, null, null);
     }
 
     public RealtimeAgentRuntime(String sessionId,
@@ -72,6 +76,17 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
                                 RealtimeModelRouter router,
                                 ResolvedModelResolver modelResolver,
                                 ModelClientRegistry clientRegistry) {
+        this(sessionId, deviceSession, bindingService, agentService, router, modelResolver, clientRegistry, null);
+    }
+
+    public RealtimeAgentRuntime(String sessionId,
+                                DeviceSession deviceSession,
+                                AiAgentRobotBindingService bindingService,
+                                AiAgentService agentService,
+                                RealtimeModelRouter router,
+                                ResolvedModelResolver modelResolver,
+                                ModelClientRegistry clientRegistry,
+                                ConversationIdentityResolver identityResolver) {
         if (sessionId == null || sessionId.isBlank()) {
             throw new IllegalArgumentException("sessionId must not be blank");
         }
@@ -82,6 +97,7 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
         this.router = Objects.requireNonNull(router, "router");
         this.modelResolver = modelResolver;
         this.clientRegistry = clientRegistry;
+        this.identityResolver = identityResolver;
     }
 
     public synchronized void attachOutput(RealtimeRuntimeOutput output) {
@@ -200,8 +216,12 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
         return audioFormat;
     }
 
-    public Long effectiveMemberId() {
-        return null;
+    public synchronized Long effectiveMemberId() {
+        return conversationIdentity == null ? null : conversationIdentity.memberId();
+    }
+
+    public synchronized ConversationIdentity conversationIdentity() {
+        return conversationIdentity;
     }
 
     public synchronized CloseReason closeReason() {
@@ -242,6 +262,10 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
 
         agentConfig = resolved;
         candidateIdentity = event.identity();
+        conversationIdentity = identityResolver == null
+                ? ConversationIdentity.anonymous(deviceSession.tenantId(), deviceSession.robotId())
+                : withTrustedTenant(() -> identityResolver.resolve(
+                        deviceSession.tenantId(), deviceSession.robotId(), event.identity()));
         audioFormat = event.audio();
         route = router.route(resolved, RealtimeModelRouter.ModelCapabilities.configured(resolved));
         if (modelResolver != null && clientRegistry != null) {

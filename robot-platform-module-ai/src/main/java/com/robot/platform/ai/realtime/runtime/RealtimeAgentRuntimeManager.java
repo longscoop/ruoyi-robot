@@ -2,6 +2,7 @@ package com.robot.platform.ai.realtime.runtime;
 
 import com.robot.platform.ai.agent.service.AiAgentRobotBindingService;
 import com.robot.platform.ai.agent.service.AiAgentService;
+import com.robot.platform.ai.memory.identity.ConversationIdentityResolver;
 import com.robot.platform.ai.model.client.ModelClientRegistry;
 import com.robot.platform.ai.realtime.gateway.AiRealtimeWebSocketHandler;
 import com.robot.platform.device.auth.service.DeviceSession;
@@ -20,6 +21,7 @@ public class RealtimeAgentRuntimeManager implements AiRealtimeWebSocketHandler.R
     private final RealtimeModelRouter router;
     private final ResolvedModelResolver modelResolver;
     private final ModelClientRegistry clientRegistry;
+    private final ConversationIdentityResolver identityResolver;
     private final ConcurrentMap<String, RealtimeAgentRuntime> runtimes = new ConcurrentHashMap<>();
 
     @Autowired
@@ -27,12 +29,14 @@ public class RealtimeAgentRuntimeManager implements AiRealtimeWebSocketHandler.R
                                        AiAgentService agentService,
                                        RealtimeModelRouter router,
                                        ResolvedModelResolver modelResolver,
-                                       ModelClientRegistry clientRegistry) {
+                                       ModelClientRegistry clientRegistry,
+                                       ConversationIdentityResolver identityResolver) {
         this.bindingService = Objects.requireNonNull(bindingService, "bindingService");
         this.agentService = Objects.requireNonNull(agentService, "agentService");
         this.router = Objects.requireNonNull(router, "router");
         this.modelResolver = Objects.requireNonNull(modelResolver, "modelResolver");
         this.clientRegistry = Objects.requireNonNull(clientRegistry, "clientRegistry");
+        this.identityResolver = Objects.requireNonNull(identityResolver, "identityResolver");
     }
 
     public RealtimeAgentRuntimeManager(AiAgentRobotBindingService bindingService,
@@ -43,13 +47,15 @@ public class RealtimeAgentRuntimeManager implements AiRealtimeWebSocketHandler.R
         this.router = Objects.requireNonNull(router, "router");
         this.modelResolver = null;
         this.clientRegistry = null;
+        this.identityResolver = null;
     }
 
     @Override
     public void open(String webSocketSessionId, DeviceSession deviceSession) {
         requireSessionId(webSocketSessionId);
         RealtimeAgentRuntime runtime = new RealtimeAgentRuntime(
-                webSocketSessionId, deviceSession, bindingService, agentService, router, modelResolver, clientRegistry);
+                webSocketSessionId, deviceSession, bindingService, agentService, router,
+                modelResolver, clientRegistry, identityResolver);
         RealtimeAgentRuntime existing = runtimes.putIfAbsent(webSocketSessionId, runtime);
         if (existing != null) {
             throw new IllegalStateException("Realtime runtime already exists for WebSocket session");
