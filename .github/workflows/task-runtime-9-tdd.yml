@@ -1,0 +1,22 @@
+name: Runtime Task 9 TDD
+
+on:
+  push:
+    branches: [ "docs/realtime-agent-design" ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+      - name: Prepare reactor dependencies
+        run: mvn -pl robot-platform-module-ai -am -Dmaven.test.skip=true install
+      - name: Realtime interruption race tests
+        run: mvn -pl robot-platform-module-ai -Dtest=RealtimeInterruptionTest test
+      - name: AI module tests
+        run: mvn -pl robot-platform-module-ai -am test

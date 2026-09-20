@@ -7,6 +7,7 @@ import com.robot.platform.ai.agent.service.AiAgentService;
 import com.robot.platform.ai.model.client.ModelClientRegistry;
 import com.robot.platform.ai.model.client.RealtimeProviderListener;
 import com.robot.platform.ai.model.client.RealtimeProviderSession;
+import com.robot.platform.ai.model.client.RealtimeTurnListener;
 import com.robot.platform.ai.model.client.RealtimeVoiceClient;
 import com.robot.platform.ai.model.client.ResolvedModel;
 import com.robot.platform.ai.model.client.event.ProviderEvent;
@@ -27,7 +28,7 @@ import static org.mockito.Mockito.*;
 class RealtimeInterruptionTest {
 
     @Test
-    void dropsLateOldTurnAudioAndContinuesNewTurn() {
+    void dropsLateOldTurnAudioThroughProductionProviderListenerAndContinuesNewTurn() {
         for (int iteration = 0; iteration < 100; iteration++) {
             Scenario scenario = scenario(iteration);
             RealtimeAgentRuntime runtime = scenario.runtime();
@@ -39,7 +40,7 @@ class RealtimeInterruptionTest {
 
             TurnGeneration turnA = runtime.activeGenerationSnapshot();
             assertNotNull(turnA);
-            scenario.provider().emit(new ProviderEvent.AudioDelta(ByteBuffer.wrap(new byte[]{10})));
+            scenario.provider().emitResponse(0, new ProviderEvent.AudioDelta(ByteBuffer.wrap(new byte[]{10})));
             assertEquals(1, scenario.output().binary.size());
 
             runtime.acceptControl(new RealtimeClientEvent.SpeechStartedEvent("b-start"));
@@ -53,20 +54,20 @@ class RealtimeInterruptionTest {
             assertEquals(1, scenario.output().count(RealtimeServerEvent.PlaybackStopEvent.class));
             assertEquals(1, scenario.output().count(RealtimeServerEvent.AssistantInterruptedEvent.class));
 
-            runtime.acceptProviderCallback(turnA,
+            scenario.provider().emitResponse(0,
                     new ProviderEvent.AudioDelta(ByteBuffer.wrap(new byte[]{99})));
             assertEquals(1, scenario.output().binary.size());
 
             runtime.acceptAudio(ByteBuffer.wrap(new byte[]{2}));
             runtime.acceptControl(new RealtimeClientEvent.SpeechStoppedEvent("b-stop"));
 
-            runtime.acceptProviderCallback(turnA,
+            scenario.provider().emitResponse(0,
                     new ProviderEvent.AudioDelta(ByteBuffer.wrap(new byte[]{98})));
             assertEquals(1, scenario.output().binary.size());
 
-            runtime.acceptProviderCallback(turnB,
+            scenario.provider().emitResponse(1,
                     new ProviderEvent.AudioDelta(ByteBuffer.wrap(new byte[]{20})));
-            runtime.acceptProviderCallback(turnB, new ProviderEvent.AudioDone());
+            scenario.provider().emitResponse(1, new ProviderEvent.AudioDone());
 
             assertEquals(2, scenario.output().binary.size());
             assertArrayEquals(new byte[]{20}, scenario.output().binary.get(1));
@@ -152,29 +153,54 @@ class RealtimeInterruptionTest {
 
     private static final class FakeRealtimeClient implements RealtimeVoiceClient {
         private final FakeSession session = new FakeSession();
-        private RealtimeProviderListener listener;
+        private RealtimeTurnListener turnListener;
 
         @Override public String providerType() { return "QWEN"; }
 
         @Override
         public RealtimeProviderSession open(ResolvedModel model, RealtimeProviderListener listener) {
-            this.listener = listener;
+            throw new AssertionError("Runtime must use generation-aware provider listener");
+        }
+
+        @Override
+        public RealtimeProviderSession openTurnAware(ResolvedModel model, RealtimeTurnListener listener) {
+            this.turnListener = listener;
+            session.turnListener = listener;
             return session;
         }
 
-        void emit(ProviderEvent event) {
-            listener.onEvent(event);
+        void emitResponse(int index, ProviderEvent event) {
+            FakeSession.TurnStamp turn = session.responses.get(index);
+            turnListener.onEvent(turn.turnId(), turn.generation(), event);
         }
     }
 
     private static final class FakeSession implements RealtimeProviderSession {
+        private final List<TurnStamp> responses = new ArrayList<>();
+        private RealtimeTurnListener turnListener;
+        private String turnId;
+        private long generation;
         private int cancelCount;
+
+        @Override
+        public void beginTurn(String turnId, long generation) {
+            this.turnId = turnId;
+            this.generation = generation;
+        }
 
         @Override public void appendAudio(ByteBuffer pcm) { }
         @Override public void speechStarted() { }
-        @Override public void speechStopped() { }
+
+        @Override
+        public void speechStopped() {
+            responses.add(new TurnStamp(turnId, generation));
+        }
+
         @Override public void cancelCurrentResponse() { cancelCount++; }
         @Override public void close() { }
+
+        private record TurnStamp(String turnId, long generation) {
+        }
     }
 
     private static final class CapturingOutput implements RealtimeRuntimeOutput {
