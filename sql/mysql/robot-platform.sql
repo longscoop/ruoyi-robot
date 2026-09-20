@@ -556,3 +556,57 @@ SELECT 920111,'Prompt 新增','ai:prompt:create',1,920020 UNION ALL
 SELECT 920121,'Provider 查询','ai:provider:query',1,920030 UNION ALL SELECT 920122,'Provider 新增','ai:provider:create',2,920030 UNION ALL SELECT 920123,'Provider 修改','ai:provider:update',3,920030 UNION ALL SELECT 920124,'Provider 删除','ai:provider:delete',4,920030 UNION ALL SELECT 920125,'模型新增','ai:model:create',5,920030 UNION ALL SELECT 920126,'模型修改','ai:model:update',6,920030 UNION ALL SELECT 920127,'模型删除','ai:model:delete',7,920030 UNION ALL
 SELECT 920131,'记忆修改','ai:memory:update',1,920050 UNION ALL SELECT 920132,'记忆删除','ai:memory:delete',2,920050)m
 WHERE NOT EXISTS(SELECT 1 FROM system_menu e WHERE e.id=m.id);
+
+
+-- Digital Human Task 1: tenant-scoped presentation configuration layered on Realtime Agent.
+CREATE TABLE IF NOT EXISTS `ai_digital_human` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `tenant_id` bigint NOT NULL COMMENT '租户编号',
+  `name` varchar(128) NOT NULL COMMENT '数字人名称',
+  `code` varchar(64) NOT NULL COMMENT '租户内数字人编码',
+  `description` varchar(1000) DEFAULT NULL COMMENT '描述',
+  `agent_id` bigint NOT NULL COMMENT '绑定智能体编号',
+  `avatar_type` varchar(32) NOT NULL DEFAULT 'STATIC_2D' COMMENT 'STATIC_2D/LIVE2D/THREE_D/EXTERNAL',
+  `avatar_url` varchar(1024) DEFAULT NULL COMMENT '头像或静态形象资源',
+  `avatar_resource_url` varchar(1024) DEFAULT NULL COMMENT '渲染资源包地址',
+  `cover_url` varchar(1024) DEFAULT NULL COMMENT '封面资源',
+  `voice_model_id` bigint DEFAULT NULL COMMENT 'TTS 音色模型覆盖',
+  `voice_id` varchar(128) DEFAULT NULL COMMENT '音色编号',
+  `speech_rate` decimal(6,3) DEFAULT NULL COMMENT '语速覆盖',
+  `pitch` decimal(6,3) DEFAULT NULL COMMENT '音调覆盖',
+  `volume` decimal(6,3) DEFAULT NULL COMMENT '音量覆盖',
+  `lip_sync_mode` varchar(32) NOT NULL DEFAULT 'AUDIO_LEVEL' COMMENT 'AUDIO_LEVEL/VISEME/PROVIDER',
+  `welcome_text` varchar(1000) DEFAULT NULL COMMENT '欢迎语',
+  `interrupt_enabled` bit(1) NOT NULL DEFAULT b'1' COMMENT '是否允许打断',
+  `config_json` json DEFAULT NULL COMMENT '受控扩展配置',
+  `status` varchar(16) NOT NULL DEFAULT 'ENABLED' COMMENT 'ENABLED/DISABLED',
+  `creator` varchar(64) DEFAULT '',
+  `create_time` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updater` varchar(64) DEFAULT '',
+  `update_time` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted` bit(1) NOT NULL DEFAULT b'0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_ai_digital_human_tenant_code` (`tenant_id`,`code`),
+  KEY `idx_ai_digital_human_agent` (`tenant_id`,`agent_id`,`status`),
+  CONSTRAINT `chk_ai_digital_human_avatar_type` CHECK (`avatar_type` IN ('STATIC_2D','LIVE2D','THREE_D','EXTERNAL')),
+  CONSTRAINT `chk_ai_digital_human_lip_sync_mode` CHECK (`lip_sync_mode` IN ('AUDIO_LEVEL','VISEME','PROVIDER')),
+  CONSTRAINT `chk_ai_digital_human_status` CHECK (`status` IN ('ENABLED','DISABLED'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='AI 数字人';
+
+CREATE TABLE IF NOT EXISTS `ai_digital_human_action` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `tenant_id` bigint NOT NULL COMMENT '租户编号',
+  `digital_human_id` bigint NOT NULL COMMENT '数字人编号',
+  `state` varchar(32) NOT NULL COMMENT 'IDLE/LISTENING/THINKING/SPEAKING/EXECUTING/ERROR',
+  `action_code` varchar(128) NOT NULL COMMENT '渲染端动作编码',
+  `config_json` json DEFAULT NULL COMMENT '动作受控扩展配置',
+  `creator` varchar(64) DEFAULT '',
+  `create_time` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updater` varchar(64) DEFAULT '',
+  `update_time` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted` bit(1) NOT NULL DEFAULT b'0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_ai_digital_human_action_state` (`tenant_id`,`digital_human_id`,`state`),
+  KEY `idx_ai_digital_human_action_human` (`tenant_id`,`digital_human_id`),
+  CONSTRAINT `chk_ai_digital_human_action_state` CHECK (`state` IN ('IDLE','LISTENING','THINKING','SPEAKING','EXECUTING','ERROR'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='AI 数字人状态动作';
