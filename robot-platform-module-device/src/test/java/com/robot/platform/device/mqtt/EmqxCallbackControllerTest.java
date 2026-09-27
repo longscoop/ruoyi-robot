@@ -87,6 +87,20 @@ class EmqxCallbackControllerTest {
     }
 
     @Test
+    void authorizationAcceptsFlatClientAttributesFromEmqxHttpTemplate() {
+        when(identities.findActiveByUsername(identity.mqttUsername())).thenReturn(Optional.of(identity));
+        Map<String, Object> request = new java.util.HashMap<>(deviceAuthorize(
+                "publish", "robot/tenant-a/product-x/SN-1/event", "1", "false"));
+        request.remove("client_attrs");
+        request.put("principal_type", "DEVICE");
+        request.put("credential_version", "4");
+
+        assertThat(authz().authorize("callback-secret", request)).containsEntry("result", "allow");
+        request.put("credential_version", "3");
+        assertThat(authz().authorize("callback-secret", request)).containsEntry("result", "deny");
+    }
+
+    @Test
     void authorizationRequiresMatchingPrincipalClientIdCanonicalTopicAndExactlyQosOne() {
         Map<String, Object> validCloud = cloudAuthorize("publish", "robot/t/p/d/command", "1", "false");
         assertThat(authz().authorize("callback-secret", validCloud)).containsEntry("result", "allow");

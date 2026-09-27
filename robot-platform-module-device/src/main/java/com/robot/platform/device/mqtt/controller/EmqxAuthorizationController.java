@@ -98,7 +98,8 @@ public class EmqxAuthorizationController {
     private static String clientAttribute(Map<String, Object> body, String name) {
         Object nested = body == null ? null : body.get("client_attrs");
         if (nested instanceof Map<?, ?> attributes && attributes.get(name) instanceof String value) return value;
-        return text(body, "client_attrs." + name);
+        String dotted = text(body, "client_attrs." + name);
+        return dotted == null ? text(body, name) : dotted;
     }
 
     private static Integer positiveQos(String value) { return "1".equals(value) ? 1 : null; }

@@ -40,6 +40,8 @@ services:
   emqx:
     image: emqx/emqx:5.8.4
     environment:
+      # The hocon escript starts before vm.args is read; keep its VM clock behavior aligned.
+      ERL_FLAGS: "+c false"
       EMQX_NODE__COOKIE: ${EMQX_NODE_COOKIE:?Set EMQX_NODE_COOKIE}
       EMQX_DASHBOARD__DEFAULT_PASSWORD: ${EMQX_DASHBOARD_PASSWORD:?Set EMQX_DASHBOARD_PASSWORD}
       # Passed unchanged to base.hocon for both callback endpoints; never use this for MQTT clients.
@@ -52,6 +54,7 @@ services:
       - "127.0.0.1:18083:18083"
     volumes:
       - ./docker/emqx/base.hocon:/opt/emqx/etc/base.hocon:ro
+      - ./docker/emqx/vm.args:/opt/emqx/etc/vm.args:ro
       - emqx-data:/opt/emqx/data
       - emqx-log:/opt/emqx/log
     healthcheck:

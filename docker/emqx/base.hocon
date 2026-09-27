@@ -57,10 +57,8 @@ authorization {
         topic = "${topic}"
         qos = "${qos}"
         retain = "${retain}"
-        client_attrs = {
-          principal_type = "${client_attrs.principal_type}"
-          credential_version = "${client_attrs.credential_version}"
-        }
+        principal_type = "${client_attrs.principal_type}"
+        credential_version = "${client_attrs.credential_version}"
       }
       connect_timeout = 5s
       request_timeout = 5s
