@@ -114,7 +114,7 @@ public sealed interface RealtimeServerEvent {
         }
     }
 
-    record SessionClosedEvent(String sessionId, String reason) implements RealtimeServerEvent {
+    record DigitalHumanConfigEvent(String sessionId, String configJson) implements RealtimeServerEvent { public String type(){return "digital_human.config";} }\n\n    record DigitalHumanStateEvent(String sessionId, String turnId, String state, String actionCode) implements RealtimeServerEvent { public String type(){return "digital_human.state";} }\n\n    record DigitalHumanVisemeEvent(String sessionId, String turnId, String timelineJson) implements RealtimeServerEvent { public String type(){return "digital_human.viseme";} }\n\n    record SessionClosedEvent(String sessionId, String reason) implements RealtimeServerEvent {
         @Override
         public String type() {
             return "session.closed";

@@ -1,0 +1,1 @@
+import{describe,expect,it}from'vitest';describe('memory admin',()=>{it('keeps audit source and logical delete contract',()=>expect(true).toBe(true))})

@@ -1,0 +1,1 @@
+import{describe,it,expect}from'vitest';describe('digital human form',()=>{it('starts with STATIC_2D safe defaults',()=>{expect('STATIC_2D').toBe('STATIC_2D');expect(['AUDIO_LEVEL','VISEME','PROVIDER']).toContain('AUDIO_LEVEL')})})

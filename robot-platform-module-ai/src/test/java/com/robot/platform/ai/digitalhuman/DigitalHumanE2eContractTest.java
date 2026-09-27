@@ -1,0 +1,2 @@
+package com.robot.platform.ai.digitalhuman;import org.junit.jupiter.api.Test;import java.nio.file.*;import static org.junit.jupiter.api.Assertions.*;
+class DigitalHumanE2eContractTest {@Test void simulatorNegotiatesDigitalHuman() throws Exception {String s=Files.readString(Path.of("../scripts/e2e/realtime-agent-client.py"));assertTrue(s.contains("DIGITAL_HUMAN_CODE"));assertTrue(s.contains("clientCapabilities"));assertTrue(s.contains("\"codec\":\"PCM_S16LE\""));}}

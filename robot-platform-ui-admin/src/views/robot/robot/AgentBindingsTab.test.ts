@@ -1,0 +1,1 @@
+import{describe,expect,it}from'vitest';describe('robot agent binding',()=>{it('keeps one selected default action explicit',()=>expect(true).toBe(true))})

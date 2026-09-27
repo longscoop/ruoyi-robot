@@ -1,0 +1,2 @@
+import { describe,expect,it } from 'vitest';import type { DigitalHumanVO } from './index'
+describe('digital human api contract',()=>{it('does not define provider secrets',()=>{const row:DigitalHumanVO={id:1,name:'x',code:'x',agentId:1,avatarType:'STATIC_2D',lipSyncMode:'AUDIO_LEVEL',interruptEnabled:true,status:'ENABLED'};expect('apiKey' in row).toBe(false);expect('baseUrl' in row).toBe(false)})})

@@ -499,3 +499,127 @@ CREATE TABLE IF NOT EXISTS `ai_realtime_session` (
   PRIMARY KEY (`id`),
   KEY `idx_ai_realtime_robot` (`tenant_id`,`robot_id`,`connected_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='AI 实时会话';
+
+
+-- Realtime Agent Memory Task 1: tenant-scoped long-term memory persistence.
+CREATE TABLE IF NOT EXISTS `ai_memory` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `tenant_id` bigint NOT NULL COMMENT '租户编号',
+  `scope` varchar(32) NOT NULL COMMENT 'MEMBER/MEMBER_ROBOT/ROBOT',
+  `member_id` bigint DEFAULT NULL COMMENT '成员编号',
+  `robot_id` bigint DEFAULT NULL COMMENT '机器人编号',
+  `memory_type` varchar(32) NOT NULL COMMENT 'PROFILE/PREFERENCE/RELATION/HABIT/FACT/ENVIRONMENT/INSTRUCTION',
+  `content` longtext NOT NULL COMMENT '记忆正文',
+  `summary` varchar(1000) DEFAULT NULL COMMENT '记忆摘要',
+  `importance` decimal(5,4) NOT NULL COMMENT '重要度 0-1',
+  `confidence` decimal(5,4) NOT NULL COMMENT '置信度 0-1',
+  `source_conversation_id` bigint DEFAULT NULL COMMENT '来源会话编号',
+  `source_message_id` bigint DEFAULT NULL COMMENT '来源消息编号',
+  `first_observed_at` datetime(3) NOT NULL COMMENT '首次观察时间',
+  `last_observed_at` datetime(3) NOT NULL COMMENT '最近观察时间',
+  `expires_at` datetime(3) DEFAULT NULL COMMENT '过期时间',
+  `status` varchar(16) NOT NULL DEFAULT 'ACTIVE' COMMENT 'ACTIVE/SUPERSEDED/DELETED',
+  `created_at` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  PRIMARY KEY (`id`),
+  KEY `idx_ai_memory_member` (`tenant_id`,`member_id`,`scope`,`status`,`expires_at`),
+  KEY `idx_ai_memory_robot` (`tenant_id`,`robot_id`,`scope`,`status`,`expires_at`),
+  KEY `idx_ai_memory_source` (`tenant_id`,`source_conversation_id`,`source_message_id`),
+  CONSTRAINT `chk_ai_memory_scope` CHECK (
+    (`scope` = 'MEMBER' AND `member_id` IS NOT NULL)
+    OR (`scope` = 'MEMBER_ROBOT' AND `member_id` IS NOT NULL AND `robot_id` IS NOT NULL)
+    OR (`scope` = 'ROBOT' AND `robot_id` IS NOT NULL)
+  ),
+  CONSTRAINT `chk_ai_memory_type` CHECK (`memory_type` IN ('PROFILE','PREFERENCE','RELATION','HABIT','FACT','ENVIRONMENT','INSTRUCTION')),
+  CONSTRAINT `chk_ai_memory_status` CHECK (`status` IN ('ACTIVE','SUPERSEDED','DELETED')),
+  CONSTRAINT `chk_ai_memory_importance` CHECK (`importance` >= 0 AND `importance` <= 1),
+  CONSTRAINT `chk_ai_memory_confidence` CHECK (`confidence` >= 0 AND `confidence` <= 1)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='AI 长期记忆';
+
+
+-- Realtime Agent AI Center: six tenant-admin pages and button permissions.
+INSERT INTO system_menu (id,name,permission,type,sort,parent_id,path,icon,component,component_name,status,visible,keep_alive,always_show,creator,create_time,updater,update_time,deleted)
+SELECT 920000,'AI 中心','',1,5,910000,'ai','ep:chat-dot-round',NULL,NULL,0,b'1',b'1',b'1','admin',NOW(),'admin',NOW(),b'0' WHERE NOT EXISTS(SELECT 1 FROM system_menu WHERE id=920000);
+INSERT INTO system_menu (id,name,permission,type,sort,parent_id,path,icon,component,component_name,status,visible,keep_alive,always_show,creator,create_time,updater,update_time,deleted)
+SELECT m.id,m.name,m.permission,2,m.sort,920000,m.path,'',m.component,m.component_name,0,b'1',b'1',b'1','admin',NOW(),'admin',NOW(),b'0' FROM (
+SELECT 920010 id,'智能体' name,'ai:agent:query' permission,1 sort,'agent' path,'ai/agent/index' component,'AiAgent' component_name UNION ALL
+SELECT 920020,'Prompt','ai:prompt:query',2,'prompt','ai/prompt/index','AiPrompt' UNION ALL
+SELECT 920030,'模型','ai:model:query',3,'model','ai/model/index','AiModel' UNION ALL
+SELECT 920040,'对话记录','ai:conversation:query',4,'conversation','ai/conversation/index','AiConversation' UNION ALL
+SELECT 920050,'长期记忆','ai:memory:query',5,'memory','ai/memory/index','AiMemory' UNION ALL
+SELECT 920060,'实时会话','ai:realtime:query',6,'realtime','ai/realtime/index','AiRealtime')m
+WHERE NOT EXISTS(SELECT 1 FROM system_menu e WHERE e.id=m.id);
+INSERT INTO system_menu (id,name,permission,type,sort,parent_id,path,icon,component,component_name,status,visible,keep_alive,always_show,creator,create_time,updater,update_time,deleted)
+SELECT m.id,m.name,m.permission,3,m.sort,m.parent_id,'','','',NULL,0,b'1',b'0',b'0','admin',NOW(),'admin',NOW(),b'0' FROM (
+SELECT 920101 id,'智能体新增' name,'ai:agent:create' permission,1 sort,920010 parent_id UNION ALL SELECT 920102,'智能体修改','ai:agent:update',2,920010 UNION ALL SELECT 920103,'智能体删除','ai:agent:delete',3,920010 UNION ALL SELECT 920104,'智能体绑定','ai:agent:bind',4,920010 UNION ALL
+SELECT 920111,'Prompt 新增','ai:prompt:create',1,920020 UNION ALL
+SELECT 920121,'Provider 查询','ai:provider:query',1,920030 UNION ALL SELECT 920122,'Provider 新增','ai:provider:create',2,920030 UNION ALL SELECT 920123,'Provider 修改','ai:provider:update',3,920030 UNION ALL SELECT 920124,'Provider 删除','ai:provider:delete',4,920030 UNION ALL SELECT 920125,'模型新增','ai:model:create',5,920030 UNION ALL SELECT 920126,'模型修改','ai:model:update',6,920030 UNION ALL SELECT 920127,'模型删除','ai:model:delete',7,920030 UNION ALL
+SELECT 920131,'记忆修改','ai:memory:update',1,920050 UNION ALL SELECT 920132,'记忆删除','ai:memory:delete',2,920050)m
+WHERE NOT EXISTS(SELECT 1 FROM system_menu e WHERE e.id=m.id);
+
+
+-- Digital Human Task 1: tenant-scoped presentation configuration layered on Realtime Agent.
+CREATE TABLE IF NOT EXISTS `ai_digital_human` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `tenant_id` bigint NOT NULL COMMENT '租户编号',
+  `name` varchar(128) NOT NULL COMMENT '数字人名称',
+  `code` varchar(64) NOT NULL COMMENT '租户内数字人编码',
+  `description` varchar(1000) DEFAULT NULL COMMENT '描述',
+  `agent_id` bigint NOT NULL COMMENT '绑定智能体编号',
+  `avatar_type` varchar(32) NOT NULL DEFAULT 'STATIC_2D' COMMENT 'STATIC_2D/LIVE2D/THREE_D/EXTERNAL',
+  `avatar_url` varchar(1024) DEFAULT NULL COMMENT '头像或静态形象资源',
+  `avatar_resource_url` varchar(1024) DEFAULT NULL COMMENT '渲染资源包地址',
+  `cover_url` varchar(1024) DEFAULT NULL COMMENT '封面资源',
+  `voice_model_id` bigint DEFAULT NULL COMMENT 'TTS 音色模型覆盖',
+  `voice_id` varchar(128) DEFAULT NULL COMMENT '音色编号',
+  `speech_rate` decimal(6,3) DEFAULT NULL COMMENT '语速覆盖',
+  `pitch` decimal(6,3) DEFAULT NULL COMMENT '音调覆盖',
+  `volume` decimal(6,3) DEFAULT NULL COMMENT '音量覆盖',
+  `lip_sync_mode` varchar(32) NOT NULL DEFAULT 'AUDIO_LEVEL' COMMENT 'AUDIO_LEVEL/VISEME/PROVIDER',
+  `welcome_text` varchar(1000) DEFAULT NULL COMMENT '欢迎语',
+  `interrupt_enabled` bit(1) NOT NULL DEFAULT b'1' COMMENT '是否允许打断',
+  `config_json` json DEFAULT NULL COMMENT '受控扩展配置',
+  `status` varchar(16) NOT NULL DEFAULT 'ENABLED' COMMENT 'ENABLED/DISABLED',
+  `creator` varchar(64) DEFAULT '',
+  `create_time` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updater` varchar(64) DEFAULT '',
+  `update_time` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted` bit(1) NOT NULL DEFAULT b'0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_ai_digital_human_tenant_code` (`tenant_id`,`code`),
+  KEY `idx_ai_digital_human_agent` (`tenant_id`,`agent_id`,`status`),
+  CONSTRAINT `chk_ai_digital_human_avatar_type` CHECK (`avatar_type` IN ('STATIC_2D','LIVE2D','THREE_D','EXTERNAL')),
+  CONSTRAINT `chk_ai_digital_human_lip_sync_mode` CHECK (`lip_sync_mode` IN ('AUDIO_LEVEL','VISEME','PROVIDER')),
+  CONSTRAINT `chk_ai_digital_human_status` CHECK (`status` IN ('ENABLED','DISABLED'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='AI 数字人';
+
+CREATE TABLE IF NOT EXISTS `ai_digital_human_action` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `tenant_id` bigint NOT NULL COMMENT '租户编号',
+  `digital_human_id` bigint NOT NULL COMMENT '数字人编号',
+  `state` varchar(32) NOT NULL COMMENT 'IDLE/LISTENING/THINKING/SPEAKING/EXECUTING/ERROR',
+  `action_code` varchar(128) NOT NULL COMMENT '渲染端动作编码',
+  `config_json` json DEFAULT NULL COMMENT '动作受控扩展配置',
+  `creator` varchar(64) DEFAULT '',
+  `create_time` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updater` varchar(64) DEFAULT '',
+  `update_time` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted` bit(1) NOT NULL DEFAULT b'0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_ai_digital_human_action_state` (`tenant_id`,`digital_human_id`,`state`),
+  KEY `idx_ai_digital_human_action_human` (`tenant_id`,`digital_human_id`),
+  CONSTRAINT `chk_ai_digital_human_action_state` CHECK (`state` IN ('IDLE','LISTENING','THINKING','SPEAKING','EXECUTING','ERROR'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='AI 数字人状态动作';
+
+
+-- Digital Human Task 10: AI Center menu and tenant-admin permissions.
+INSERT INTO system_menu (id,name,permission,type,sort,parent_id,path,icon,component,component_name,status,visible,keep_alive,always_show,creator,create_time,updater,update_time,deleted)
+SELECT 920070,'数字人','ai:digital-human:query',2,7,920000,'digital-human','ep:user','ai/digital-human/index','AiDigitalHuman',0,b'1',b'1',b'1','admin',NOW(),'admin',NOW(),b'0'
+WHERE NOT EXISTS(SELECT 1 FROM system_menu WHERE id=920070);
+INSERT INTO system_menu (id,name,permission,type,sort,parent_id,path,icon,component,component_name,status,visible,keep_alive,always_show,creator,create_time,updater,update_time,deleted)
+SELECT m.id,m.name,m.permission,3,m.sort,920070,'','','',NULL,0,b'1',b'0',b'0','admin',NOW(),'admin',NOW(),b'0' FROM (
+ SELECT 920141 id,'数字人新增' name,'ai:digital-human:create' permission,1 sort UNION ALL
+ SELECT 920142,'数字人修改','ai:digital-human:update',2 UNION ALL
+ SELECT 920143,'数字人删除','ai:digital-human:delete',3 UNION ALL
+ SELECT 920144,'数字人预览','ai:digital-human:preview',4
+)m WHERE NOT EXISTS(SELECT 1 FROM system_menu e WHERE e.id=m.id);

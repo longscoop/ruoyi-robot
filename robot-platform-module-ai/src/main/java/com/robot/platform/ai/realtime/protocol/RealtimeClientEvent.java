@@ -20,7 +20,7 @@ public sealed interface RealtimeClientEvent {
         }
     }
 
-    record SpeechStartedEvent(String eventId) implements RealtimeClientEvent {
+    record ClientCapabilities(boolean viseme, boolean audioLevelLipSync) {}\n\n    record SpeechStartedEvent(String eventId) implements RealtimeClientEvent {
         @Override
         public String type() {
             return "input.speech_started";

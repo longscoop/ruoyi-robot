@@ -1,0 +1,8 @@
+import request from '@/config/axios'
+export type AvatarType='STATIC_2D'|'LIVE2D'|'THREE_D'|'EXTERNAL'
+export type LipSyncMode='AUDIO_LEVEL'|'VISEME'|'PROVIDER'
+export type DigitalHumanState='IDLE'|'LISTENING'|'THINKING'|'SPEAKING'|'EXECUTING'|'ERROR'
+export interface DigitalHumanVO{id:number;name:string;code:string;description?:string;agentId:number;avatarType:AvatarType;avatarUrl?:string;avatarResourceUrl?:string;coverUrl?:string;voiceModelId?:number;voiceId?:string;speechRate?:number;pitch?:number;volume?:number;lipSyncMode:LipSyncMode;welcomeText?:string;interruptEnabled:boolean;configJson?:string;status:string}
+export interface DigitalHumanActionVO{id?:number;state:DigitalHumanState;actionCode:string;configJson?:string}
+export interface DigitalHumanPreviewVO{id:number;code:string;agentId:number;avatarType:AvatarType;avatarUrl?:string;avatarResourceUrl?:string;voiceModelId?:number;voiceId?:string;lipSyncMode:LipSyncMode;welcomeText?:string;interruptEnabled:boolean}
+export const DigitalHumanApi={list:()=>request.get<DigitalHumanVO[]>({url:'/ai/digital-humans'}),get:(id:number)=>request.get<DigitalHumanVO>({url:`/ai/digital-humans/${id}`}),create:(data:Omit<DigitalHumanVO,'id'>)=>request.post<number>({url:'/ai/digital-humans',data}),update:(id:number,data:Omit<DigitalHumanVO,'id'>)=>request.put({url:`/ai/digital-humans/${id}`,data}),delete:(id:number)=>request.delete({url:`/ai/digital-humans/${id}`}),updateActions:(id:number,data:DigitalHumanActionVO[])=>request.put({url:`/ai/digital-humans/${id}/actions`,data}),preview:(id:number)=>request.post<DigitalHumanPreviewVO>({url:`/ai/digital-humans/${id}/preview-session`})}

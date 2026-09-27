@@ -114,15 +114,27 @@ class DoubaoRealtimeVoiceClientTest {
         connector.emit(serverJson(451, "server-session",
                 "{\"results\":[{\"text\":\"A输入\",\"is_interim\":false}]}"));
         connector.emit(serverJson(550, "server-session", "{\"content\":\"A回复\"}"));
+        connector.emit(serverJson(559, "server-session", "{}"));
+
         connector.emit(serverJson(451, "server-session",
                 "{\"results\":[{\"text\":\"B输入\",\"is_interim\":false}]}"));
         connector.emit(serverJson(550, "server-session", "{\"content\":\"B回复\"}"));
 
-        assertEquals(4, received.size());
+        connector.emit(serverBinary(352, "server-session", new byte[]{7}));
+        connector.emit(serverJson(359, "server-session", "{}"));
+        connector.emit(serverJson(559, "server-session", "{}"));
+        connector.emit(serverBinary(352, "server-session", new byte[]{8}));
+
+        assertEquals(9, received.size());
         assertEquals(new TurnStamp("turn-a", 1L), received.get(0).stamp());
         assertEquals(new TurnStamp("turn-a", 1L), received.get(1).stamp());
-        assertEquals(new TurnStamp("turn-b", 2L), received.get(2).stamp());
+        assertEquals(new TurnStamp("turn-a", 1L), received.get(2).stamp());
         assertEquals(new TurnStamp("turn-b", 2L), received.get(3).stamp());
+        assertEquals(new TurnStamp("turn-b", 2L), received.get(4).stamp());
+        assertEquals(new TurnStamp("turn-a", 1L), received.get(5).stamp());
+        assertEquals(new TurnStamp("turn-a", 1L), received.get(6).stamp());
+        assertEquals(new TurnStamp("turn-b", 2L), received.get(7).stamp());
+        assertEquals(new TurnStamp("turn-b", 2L), received.get(8).stamp());
     }
 
     @Test

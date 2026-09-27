@@ -21,13 +21,14 @@ final class DoubaoRealtimeSession implements RealtimeProviderSession, WebSocket.
     private final RealtimeProviderListener legacyListener;
     private final RealtimeTurnListener turnListener;
     private final Deque<ByteBuffer> pendingAudio = new ArrayDeque<>();
+    private final Deque<TurnStamp> pendingInputTurns = new ArrayDeque<>();
+    private final Deque<TurnStamp> chatTurns = new ArrayDeque<>();
+    private final Deque<TurnStamp> ttsTurns = new ArrayDeque<>();
     private final ByteArrayOutputStream incoming = new ByteArrayOutputStream();
 
     private WebSocket webSocket;
     private String sessionId;
     private TurnStamp currentTurn;
-    private TurnStamp pendingAssistantTurn;
-    private TurnStamp assistantTurn;
     private boolean sessionReady;
     private boolean pendingEndAsr;
     private boolean pendingInterrupt;
@@ -94,7 +95,7 @@ final class DoubaoRealtimeSession implements RealtimeProviderSession, WebSocket.
         requireOpen();
         suppressOutput = false;
         if (turnListener != null) {
-            pendingAssistantTurn = requireCurrentTurn();
+            pendingInputTurns.addLast(requireCurrentTurn());
         }
         if (sessionReady) {
             send(codec.encodeEndAsr(requireSessionId()));
@@ -121,6 +122,9 @@ final class DoubaoRealtimeSession implements RealtimeProviderSession, WebSocket.
         }
         closed = true;
         pendingAudio.clear();
+        pendingInputTurns.clear();
+        chatTurns.clear();
+        ttsTurns.clear();
         if (webSocket != null) {
             if (sessionId != null && !sessionId.isBlank()) {
                 sendClosing(codec.encodeFinishSession(sessionId));
@@ -166,6 +170,9 @@ final class DoubaoRealtimeSession implements RealtimeProviderSession, WebSocket.
     public synchronized CompletionStage<?> onClose(WebSocket webSocket, int statusCode, String reason) {
         closed = true;
         pendingAudio.clear();
+        pendingInputTurns.clear();
+        chatTurns.clear();
+        ttsTurns.clear();
         return null;
     }
 
@@ -198,35 +205,74 @@ final class DoubaoRealtimeSession implements RealtimeProviderSession, WebSocket.
         List<ProviderEvent> events = codec.normalize(frame);
         for (ProviderEvent event : events) {
             if (event instanceof ProviderEvent.TranscriptDelta) {
-                emit(currentTurn, event);
+                emit(inputTurn(), event);
                 continue;
             }
             if (event instanceof ProviderEvent.TranscriptDone) {
-                emit(currentTurn, event);
-                if (pendingAssistantTurn != null) {
-                    assistantTurn = pendingAssistantTurn;
-                    pendingAssistantTurn = null;
+                TurnStamp completedInput = completeInputTurn();
+                emit(completedInput, event);
+                if (turnListener != null && completedInput != null) {
+                    chatTurns.addLast(completedInput);
                 }
                 continue;
             }
-            if (suppressOutput && isAssistantOutput(event)) {
-                continue;
+
+            TurnStamp turn = turnForAssistantEvent(frame.event(), event);
+            boolean assistantOutput = isAssistantOutput(event);
+            if (!(suppressOutput && assistantOutput)) {
+                emit(turn, event);
             }
-            TurnStamp turn = isAssistantOutput(event) || event instanceof ProviderEvent.Usage
-                    ? assistantOutputTurn()
-                    : currentTurn;
-            emit(turn, event);
+
+            if (frame.event() == DoubaoRealtimeCodec.EVENT_CHAT_ENDED) {
+                completeChatTurn(turn);
+            } else if (frame.event() == DoubaoRealtimeCodec.EVENT_TTS_ENDED) {
+                completeTtsTurn(turn);
+            }
         }
     }
 
-    private TurnStamp assistantOutputTurn() {
-        if (assistantTurn != null) {
-            return assistantTurn;
+    private TurnStamp inputTurn() {
+        TurnStamp pending = pendingInputTurns.peekFirst();
+        return pending == null ? currentTurn : pending;
+    }
+
+    private TurnStamp completeInputTurn() {
+        TurnStamp pending = pendingInputTurns.pollFirst();
+        return pending == null ? currentTurn : pending;
+    }
+
+    private TurnStamp turnForAssistantEvent(int eventCode, ProviderEvent event) {
+        if (eventCode == DoubaoRealtimeCodec.EVENT_TTS_SENTENCE_START
+                || eventCode == DoubaoRealtimeCodec.EVENT_TTS_SENTENCE_END
+                || eventCode == DoubaoRealtimeCodec.EVENT_TTS_RESPONSE
+                || eventCode == DoubaoRealtimeCodec.EVENT_TTS_ENDED
+                || event instanceof ProviderEvent.AudioDelta
+                || event instanceof ProviderEvent.AudioDone) {
+            TurnStamp tts = ttsTurns.peekFirst();
+            if (tts != null) {
+                return tts;
+            }
+            TurnStamp chat = chatTurns.peekFirst();
+            return chat == null ? currentTurn : chat;
         }
-        if (pendingAssistantTurn != null) {
-            return pendingAssistantTurn;
+
+        TurnStamp chat = chatTurns.peekFirst();
+        return chat == null ? currentTurn : chat;
+    }
+
+    private void completeChatTurn(TurnStamp emittedTurn) {
+        TurnStamp pending = chatTurns.peekFirst();
+        if (pending != null && pending.equals(emittedTurn)) {
+            chatTurns.removeFirst();
+            ttsTurns.addLast(pending);
         }
-        return currentTurn;
+    }
+
+    private void completeTtsTurn(TurnStamp emittedTurn) {
+        TurnStamp pending = ttsTurns.peekFirst();
+        if (pending != null && pending.equals(emittedTurn)) {
+            ttsTurns.removeFirst();
+        }
     }
 
     private void flushPendingAudio() {

@@ -1,0 +1,1 @@
+import{describe,it,expect}from'vitest';import{OtaSimulator}from'./ota';import{scenarios}from'./scenarios';describe('ota and scenarios',()=>{it('never executes an ota package',()=>{const o=new OtaSimulator;o.start({packageId:'p'});o.advance(100);o.install();expect(o.state).toBe('INSTALLING')});it('ships core scenarios',()=>expect(Object.keys(scenarios)).toContain('networkFlap'))})

@@ -4,6 +4,11 @@ import com.robot.platform.ai.agent.dal.dataobject.AiAgentDO;
 import com.robot.platform.ai.agent.service.AiAgentConfig;
 import com.robot.platform.ai.agent.service.AiAgentRobotBindingService;
 import com.robot.platform.ai.agent.service.AiAgentService;
+import com.robot.platform.ai.memory.identity.ConversationIdentity;\nimport com.robot.platform.ai.digitalhuman.dal.dataobject.AiDigitalHumanDO;\nimport com.robot.platform.ai.digitalhuman.realtime.DigitalHumanSessionResolver;\nimport com.robot.platform.ai.digitalhuman.realtime.DigitalHumanStateMapper;\nimport com.robot.platform.framework.common.util.json.JsonUtils;
+import com.robot.platform.ai.memory.identity.ConversationIdentityResolver;
+import com.robot.platform.ai.memory.extract.MemoryExtractor;
+import com.robot.platform.ai.memory.pipeline.MemoryPipeline;
+import com.robot.platform.ai.memory.context.MemoryContextBuilder;
 import com.robot.platform.ai.model.client.ModelClientRegistry;
 import com.robot.platform.ai.model.client.ResolvedModel;
 import com.robot.platform.ai.model.client.RealtimeProviderSession;
@@ -45,11 +50,15 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
     private final RealtimeModelRouter router;
     private final ResolvedModelResolver modelResolver;
     private final ModelClientRegistry clientRegistry;
+    private final ConversationIdentityResolver identityResolver;
+    private final MemoryPipeline memoryPipeline;
+    private final MemoryContextBuilder memoryContextBuilder;
 
     private State state = State.CONNECTING;
     private AiAgentConfig agentConfig;
     private RealtimeRoute route;
     private RealtimeClientEvent.CandidateIdentity candidateIdentity;
+    private ConversationIdentity conversationIdentity;
     private RealtimeAudioFormat audioFormat;
     private CloseReason closeReason;
     private RealtimeRuntimeOutput output;
@@ -57,12 +66,14 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
     private long turnSequence;
     private TurnGeneration activeGeneration;
     private boolean assistantAudioStarted;
+    private String finalizedUserText;
+    private String finalizedAssistantText;\n    private DigitalHumanSessionResolver digitalHumanResolver;\n    private AiDigitalHumanDO digitalHuman;
 
     public RealtimeAgentRuntime(DeviceSession deviceSession,
                                 AiAgentRobotBindingService bindingService,
                                 AiAgentService agentService,
                                 RealtimeModelRouter router) {
-        this("standalone", deviceSession, bindingService, agentService, router, null, null);
+        this("standalone", deviceSession, bindingService, agentService, router, null, null, null, null, null);
     }
 
     public RealtimeAgentRuntime(String sessionId,
@@ -72,6 +83,33 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
                                 RealtimeModelRouter router,
                                 ResolvedModelResolver modelResolver,
                                 ModelClientRegistry clientRegistry) {
+        this(sessionId, deviceSession, bindingService, agentService, router, modelResolver, clientRegistry, null, null, null);
+    }
+
+    public RealtimeAgentRuntime(String sessionId,
+                                DeviceSession deviceSession,
+                                AiAgentRobotBindingService bindingService,
+                                AiAgentService agentService,
+                                RealtimeModelRouter router,
+                                ResolvedModelResolver modelResolver,
+                                ModelClientRegistry clientRegistry,
+                                ConversationIdentityResolver identityResolver) {
+        this(sessionId, deviceSession, bindingService, agentService, router, modelResolver, clientRegistry, identityResolver, null, null);
+    }
+
+    public RealtimeAgentRuntime(String sessionId, DeviceSession deviceSession,
+                                AiAgentRobotBindingService bindingService, AiAgentService agentService,
+                                RealtimeModelRouter router, ResolvedModelResolver modelResolver,
+                                ModelClientRegistry clientRegistry, ConversationIdentityResolver identityResolver,
+                                MemoryPipeline memoryPipeline) {
+        this(sessionId, deviceSession, bindingService, agentService, router, modelResolver, clientRegistry, identityResolver, memoryPipeline, null);
+    }
+
+    public RealtimeAgentRuntime(String sessionId, DeviceSession deviceSession,
+                                AiAgentRobotBindingService bindingService, AiAgentService agentService,
+                                RealtimeModelRouter router, ResolvedModelResolver modelResolver,
+                                ModelClientRegistry clientRegistry, ConversationIdentityResolver identityResolver,
+                                MemoryPipeline memoryPipeline, MemoryContextBuilder memoryContextBuilder) {
         if (sessionId == null || sessionId.isBlank()) {
             throw new IllegalArgumentException("sessionId must not be blank");
         }
@@ -82,6 +120,9 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
         this.router = Objects.requireNonNull(router, "router");
         this.modelResolver = modelResolver;
         this.clientRegistry = clientRegistry;
+        this.identityResolver = identityResolver;
+        this.memoryPipeline = memoryPipeline;
+        this.memoryContextBuilder = memoryContextBuilder;
     }
 
     public synchronized void attachOutput(RealtimeRuntimeOutput output) {
@@ -200,8 +241,12 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
         return audioFormat;
     }
 
-    public Long effectiveMemberId() {
-        return null;
+    public synchronized Long effectiveMemberId() {
+        return conversationIdentity == null ? null : conversationIdentity.memberId();
+    }
+
+    public synchronized ConversationIdentity conversationIdentity() {
+        return conversationIdentity;
     }
 
     public synchronized CloseReason closeReason() {
@@ -225,7 +270,7 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
             throw new IllegalArgumentException("session.start audio format must not be null");
         }
 
-        AiAgentConfig resolved = withTrustedTenant(() -> {
+        if (event.digitalHumanCode() != null && !event.digitalHumanCode().isBlank()) {\n            if (digitalHumanResolver == null) throw new IllegalStateException("Digital human resolver is not available");\n            DigitalHumanSessionResolver.Resolved dh = withTrustedTenant(() -> digitalHumanResolver.resolve(deviceSession.tenantId(), event.digitalHumanCode(), event.agentCode()));\n            digitalHuman = dh.digitalHuman();\n        }\n\n        AiAgentConfig resolved = withTrustedTenant(() -> {
             AiAgentDO agent = bindingService.requireAgentForRobot(
                     deviceSession.tenantId(), deviceSession.robotId(), event.agentCode());
             if (agent == null || agent.getId() == null) {
@@ -242,6 +287,10 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
 
         agentConfig = resolved;
         candidateIdentity = event.identity();
+        conversationIdentity = identityResolver == null
+                ? ConversationIdentity.anonymous(deviceSession.tenantId(), deviceSession.robotId())
+                : withTrustedTenant(() -> identityResolver.resolve(
+                        deviceSession.tenantId(), deviceSession.robotId(), event.identity()));
         audioFormat = event.audio();
         route = router.route(resolved, RealtimeModelRouter.ModelCapabilities.configured(resolved));
         if (modelResolver != null && clientRegistry != null) {
@@ -253,7 +302,7 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
         }
         state = State.READY;
         if (output != null) {
-            output.sendEvent(new RealtimeServerEvent.SessionCreatedEvent(sessionId, route.mode().name()));
+            output.sendEvent(new RealtimeServerEvent.SessionCreatedEvent(sessionId, route.mode().name()));\n            if (digitalHuman != null) {\n                var safe = new java.util.LinkedHashMap<String,Object>(); safe.put("id",digitalHuman.getId());safe.put("code",digitalHuman.getCode());safe.put("avatarType",digitalHuman.getAvatarType());safe.put("avatarUrl",digitalHuman.getAvatarUrl());safe.put("avatarResourceUrl",digitalHuman.getAvatarResourceUrl());safe.put("voiceModelId",digitalHuman.getVoiceModelId());safe.put("voiceId",digitalHuman.getVoiceId());safe.put("lipSyncMode",digitalHuman.getLipSyncMode());safe.put("welcomeText",digitalHuman.getWelcomeText());safe.put("interruptEnabled",digitalHuman.getInterruptEnabled());\n                output.sendEvent(new RealtimeServerEvent.DigitalHumanConfigEvent(sessionId, JsonUtils.toJsonString(safe)));\n                output.sendEvent(new RealtimeServerEvent.DigitalHumanStateEvent(sessionId, null, "IDLE", null));\n            }
         }
     }
 
@@ -267,7 +316,8 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
         if (resolvedModel.modelId() != modelId) {
             throw new IllegalStateException("Resolved model does not match realtime route");
         }
-        resolvedModel = resolvedModel.withRealtimeSession(agentConfig.systemPrompt(), agentConfig.voiceConfigJson());
+        String memoryContext = buildMemoryContext("");
+        resolvedModel = resolvedModel.withRealtimeSession(mergeSystemContext(agentConfig.systemPrompt(), memoryContext), agentConfig.voiceConfigJson());
         RealtimeVoiceClient client = clientRegistry.requireRealtimeVoice(resolvedModel.providerType());
         providerSession = client.openTurnAware(resolvedModel, this::onProviderTurnEvent);
     }
@@ -291,7 +341,8 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
         }
         providerSession = new CascadeRealtimePipeline(
                 models.asr(), models.chat(), models.tts(),
-                agentConfig.systemPrompt(), clientRegistry, this::onProviderTurnEvent);
+                agentConfig.systemPrompt(), clientRegistry, this::onProviderTurnEvent,
+                text -> buildMemoryContext(text));
     }
 
     private record CascadeModels(ResolvedModel asr, ResolvedModel chat, ResolvedModel tts) {
@@ -306,6 +357,8 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
 
         activeGeneration = new TurnGeneration("turn-" + (++turnSequence), turnSequence);
         assistantAudioStarted = false;
+        finalizedUserText = null;
+        finalizedAssistantText = null;
         state = State.USER_SPEAKING;
         if (providerSession != null) {
             providerSession.beginTurn(activeGeneration.turnId(), activeGeneration.generation());
@@ -377,12 +430,14 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
             output.sendEvent(new RealtimeServerEvent.InputTranscriptDeltaEvent(
                     sessionId, turnId, value.text()));
         } else if (event instanceof ProviderEvent.TranscriptDone value) {
+            finalizedUserText = value.text();
             output.sendEvent(new RealtimeServerEvent.InputTranscriptDoneEvent(
                     sessionId, turnId, value.text()));
         } else if (event instanceof ProviderEvent.TextDelta value) {
             output.sendEvent(new RealtimeServerEvent.AssistantTextDeltaEvent(
                     sessionId, turnId, value.text()));
         } else if (event instanceof ProviderEvent.TextDone value) {
+            finalizedAssistantText = value.text();
             output.sendEvent(new RealtimeServerEvent.AssistantTextDoneEvent(
                     sessionId, turnId, value.text()));
         } else if (event instanceof ProviderEvent.AudioDelta value) {
@@ -399,6 +454,7 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
                 state = State.READY;
             }
             assistantAudioStarted = false;
+            submitFinalizedTurn();
         } else if (event instanceof ProviderEvent.ToolCall value) {
             output.sendEvent(new RealtimeServerEvent.ToolStartedEvent(
                     sessionId, turnId, value.id(), value.name()));
@@ -406,6 +462,23 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
             output.sendEvent(new RealtimeServerEvent.SessionErrorEvent(
                     sessionId, value.code(), value.message()));
         }
+    }
+
+    private String buildMemoryContext(String userText) {
+        if (memoryContextBuilder == null || conversationIdentity == null || agentConfig == null) return "";
+        return memoryContextBuilder.buildContext(conversationIdentity, agentConfig, userText);
+    }
+
+    private static String mergeSystemContext(String prompt, String memory) {
+        if (memory == null || memory.isBlank()) return prompt;
+        return (prompt == null || prompt.isBlank()) ? memory : prompt + "\n\n" + memory;
+    }
+
+    private void submitFinalizedTurn() {
+        if (memoryPipeline == null || conversationIdentity == null || agentConfig == null
+                || finalizedUserText == null || finalizedAssistantText == null) return;
+        memoryPipeline.submit(new MemoryExtractor.CompletedTurn(finalizedUserText, finalizedAssistantText),
+                conversationIdentity, agentConfig);
     }
 
     private boolean matchesActive(TurnGeneration callbackGeneration) {

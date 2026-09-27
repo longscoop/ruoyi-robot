@@ -1,0 +1,3 @@
+import{envelope}from'./core';export interface Telemetry{robotId:number;battery:number;cpuUsage:number;memoryUsage:number;temperatureCelsius:number;workStatus:'IDLE'|'BUSY'|'CHARGING'|'ERROR'|'OFFLINE';ipAddress:string;currentMissionId?:string;softwareVersion?:string}
+export const heartbeat=(x:Telemetry)=>envelope('HEARTBEAT',{...x,currentMissionId:x.currentMissionId??null,softwareVersion:x.softwareVersion??null});
+export class HeartbeatLoop{timer?:number;start(seconds:number,send:(x:ReturnType<typeof heartbeat>)=>void,state:()=>Telemetry){this.stop();send(heartbeat(state()));this.timer=window.setInterval(()=>send(heartbeat(state())),seconds*1000)}stop(){if(this.timer)clearInterval(this.timer);this.timer=undefined}}
