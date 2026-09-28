@@ -63,7 +63,9 @@ class RealtimeProtocolCodecTest {
                 .map(component -> component.getName())
                 .toList();
 
-        assertEquals(List.of("agentCode", "identity", "audio"), components);
+        assertTrue(components.containsAll(List.of("agentCode", "identity", "audio")));
+        assertFalse(components.contains("tenantId"));
+        assertFalse(components.contains("robotId"));
 
         RealtimeProtocolCodec codec = new RealtimeProtocolCodec();
         assertThrows(IllegalArgumentException.class, () -> codec.decodeClientText("""

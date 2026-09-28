@@ -36,7 +36,7 @@ import static com.robot.platform.framework.common.pojo.CommonResult.success;
 /** Robot creation/deletion is intentionally absent: DeviceService owns that lifecycle. */
 @Tag(name = "管理后台 - 机器人")
 @RestController
-@RequestMapping("/admin-api/robot/robots")
+@RequestMapping("/robot/robots")
 @Validated
 @RequiredArgsConstructor
 public class RobotController {

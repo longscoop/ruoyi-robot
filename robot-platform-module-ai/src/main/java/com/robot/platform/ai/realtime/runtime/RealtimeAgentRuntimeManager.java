@@ -2,13 +2,15 @@ package com.robot.platform.ai.realtime.runtime;
 
 import com.robot.platform.ai.agent.service.AiAgentRobotBindingService;
 import com.robot.platform.ai.agent.service.AiAgentService;
-import com.robot.platform.ai.memory.identity.ConversationIdentityResolver;\nimport com.robot.platform.ai.digitalhuman.realtime.DigitalHumanSessionResolver;
+import com.robot.platform.ai.memory.identity.ConversationIdentityResolver;
+import com.robot.platform.ai.digitalhuman.realtime.DigitalHumanSessionResolver;
 import com.robot.platform.ai.memory.pipeline.MemoryPipeline;
 import com.robot.platform.ai.memory.context.MemoryContextBuilder;
 import com.robot.platform.ai.model.client.ModelClientRegistry;
 import com.robot.platform.ai.realtime.gateway.AiRealtimeWebSocketHandler;
 import com.robot.platform.device.auth.service.DeviceSession;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Component;
 
 import java.util.Objects;
@@ -25,7 +27,8 @@ public class RealtimeAgentRuntimeManager implements AiRealtimeWebSocketHandler.R
     private final ModelClientRegistry clientRegistry;
     private final ConversationIdentityResolver identityResolver;
     private final MemoryPipeline memoryPipeline;
-    private final MemoryContextBuilder memoryContextBuilder;\n    private final DigitalHumanSessionResolver digitalHumanResolver;
+    private final MemoryContextBuilder memoryContextBuilder;
+    private final DigitalHumanSessionResolver digitalHumanResolver;
     private final ConcurrentMap<String, RealtimeAgentRuntime> runtimes = new ConcurrentHashMap<>();
 
     @Autowired
@@ -35,16 +38,18 @@ public class RealtimeAgentRuntimeManager implements AiRealtimeWebSocketHandler.R
                                        ResolvedModelResolver modelResolver,
                                        ModelClientRegistry clientRegistry,
                                        ConversationIdentityResolver identityResolver,
-                                       MemoryPipeline memoryPipeline,
-                                       MemoryContextBuilder memoryContextBuilder) {
+                                       @Nullable MemoryPipeline memoryPipeline,
+                                       MemoryContextBuilder memoryContextBuilder,
+                                       DigitalHumanSessionResolver digitalHumanResolver) {
         this.bindingService = Objects.requireNonNull(bindingService, "bindingService");
         this.agentService = Objects.requireNonNull(agentService, "agentService");
         this.router = Objects.requireNonNull(router, "router");
         this.modelResolver = Objects.requireNonNull(modelResolver, "modelResolver");
         this.clientRegistry = Objects.requireNonNull(clientRegistry, "clientRegistry");
         this.identityResolver = Objects.requireNonNull(identityResolver, "identityResolver");
-        this.memoryPipeline = Objects.requireNonNull(memoryPipeline, "memoryPipeline");
-        this.memoryContextBuilder = Objects.requireNonNull(memoryContextBuilder, "memoryContextBuilder");\n        this.digitalHumanResolver = Objects.requireNonNull(digitalHumanResolver, "digitalHumanResolver");
+        this.memoryPipeline = memoryPipeline;
+        this.memoryContextBuilder = Objects.requireNonNull(memoryContextBuilder, "memoryContextBuilder");
+        this.digitalHumanResolver = Objects.requireNonNull(digitalHumanResolver, "digitalHumanResolver");
     }
 
     public RealtimeAgentRuntimeManager(AiAgentRobotBindingService bindingService,
@@ -57,7 +62,8 @@ public class RealtimeAgentRuntimeManager implements AiRealtimeWebSocketHandler.R
         this.clientRegistry = null;
         this.identityResolver = null;
         this.memoryPipeline = null;
-        this.memoryContextBuilder = null;\n        this.digitalHumanResolver = null;
+        this.memoryContextBuilder = null;
+        this.digitalHumanResolver = null;
     }
 
     @Override
@@ -65,7 +71,8 @@ public class RealtimeAgentRuntimeManager implements AiRealtimeWebSocketHandler.R
         requireSessionId(webSocketSessionId);
         RealtimeAgentRuntime runtime = new RealtimeAgentRuntime(
                 webSocketSessionId, deviceSession, bindingService, agentService, router,
-                modelResolver, clientRegistry, identityResolver, memoryPipeline, memoryContextBuilder);\n        if (digitalHumanResolver != null) runtime.attachDigitalHumanResolver(digitalHumanResolver);
+                modelResolver, clientRegistry, identityResolver, memoryPipeline, memoryContextBuilder);
+        if (digitalHumanResolver != null) runtime.attachDigitalHumanResolver(digitalHumanResolver);
         RealtimeAgentRuntime existing = runtimes.putIfAbsent(webSocketSessionId, runtime);
         if (existing != null) {
             throw new IllegalStateException("Realtime runtime already exists for WebSocket session");

@@ -1,6 +1,4 @@
 <template>
-  <doc-alert title="地区 & IP" url="https://doc.iocoder.cn/area-and-ip/" />
-
   <!-- 操作栏 -->
   <ContentWrap>
     <el-button type="primary" plain @click="openForm()">

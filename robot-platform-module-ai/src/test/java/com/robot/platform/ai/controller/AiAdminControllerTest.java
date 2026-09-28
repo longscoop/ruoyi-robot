@@ -4,6 +4,7 @@ import com.robot.platform.ai.agent.controller.admin.AiAgentAdminController;
 import com.robot.platform.ai.agent.dal.dataobject.AiAgentDO;
 import com.robot.platform.ai.agent.service.AiAgentRobotBindingService;
 import com.robot.platform.ai.agent.service.AiAgentService;
+import com.robot.platform.ai.knowledge.controller.admin.AiKnowledgeAdminController;
 import com.robot.platform.ai.model.controller.admin.AiModelAdminController;
 import com.robot.platform.ai.model.controller.admin.AiModelProviderAdminController;
 import com.robot.platform.ai.model.dal.dataobject.AiModelDO;
@@ -147,15 +148,18 @@ class AiAdminControllerTest {
                 AiPromptAdminController.PromptCreateReqVO.class,
                 AiAgentAdminController.AgentCreateReqVO.class,
                 AiAgentAdminController.AgentUpdateReqVO.class,
-                AiAgentAdminController.AgentBindReqVO.class);
+                AiAgentAdminController.AgentBindReqVO.class,
+                AiKnowledgeAdminController.BaseReq.class,
+                AiKnowledgeAdminController.DocumentReq.class);
     }
 
     @Test
     void controllersExposeRequiredAdminApiRoots() {
-        assertRequestMapping(AiModelProviderAdminController.class, "/admin-api/ai/providers");
-        assertRequestMapping(AiModelAdminController.class, "/admin-api/ai/models");
-        assertRequestMapping(AiPromptAdminController.class, "/admin-api/ai/prompts");
-        assertRequestMapping(AiAgentAdminController.class, "/admin-api/ai/agents");
+        assertRequestMapping(AiModelProviderAdminController.class, "/ai/providers");
+        assertRequestMapping(AiModelAdminController.class, "/ai/models");
+        assertRequestMapping(AiPromptAdminController.class, "/ai/prompts");
+        assertRequestMapping(AiAgentAdminController.class, "/ai/agents");
+        assertRequestMapping(AiKnowledgeAdminController.class, "/ai/knowledge-bases");
     }
 
     private static void assertNoTenantField(Class<?>... requestTypes) {

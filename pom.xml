@@ -19,21 +19,6 @@
         <!-- 各种 module 拓展 -->
         <module>robot-platform-module-system</module>
         <module>robot-platform-module-infra</module>
-<!--        <module>robot-platform-module-member</module>-->
-<!--        <module>robot-platform-module-bpm</module>-->
-<!--        <module>robot-platform-module-report</module>-->
-<!--        <module>robot-platform-module-mp</module>-->
-<!--        <module>robot-platform-module-pay</module>-->
-<!--        <module>robot-platform-module-mall</module>-->
-<!--        <module>robot-platform-module-crm</module>-->
-<!--        <module>robot-platform-module-erp</module>-->
-<!--        <module>robot-platform-module-iot</module>-->
-<!--        <module>robot-platform-module-mes</module>-->
-<!--        <module>robot-platform-module-wms</module>-->
-<!--        <module>robot-platform-module-hrm</module>-->
-<!--        <module>robot-platform-module-fms</module>-->
-        <!--        <module>robot-platform-module-im</module>-->
-<!-- 请参考 https://doc.iocoder.cn/ai/build/ 文档，完成 AI 模块的启动！！！ -->
         <module>robot-platform-module-ai</module>
     </modules>
 

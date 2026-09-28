@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.*;
 import java.math.BigDecimal;import java.util.*;
 import static com.robot.platform.framework.common.pojo.CommonResult.success;
 
-@RestController @RequestMapping("/admin-api/ai/digital-humans") @RequiredArgsConstructor
+@RestController @RequestMapping("/ai/digital-humans") @RequiredArgsConstructor
 public class AiDigitalHumanAdminController {
  private final AiDigitalHumanService service;
  @GetMapping @PreAuthorize("@ss.hasPermission('ai:digital-human:query')") public CommonResult<List<Resp>> list(){return success(service.list(tenant()).stream().map(AiDigitalHumanAdminController::resp).toList());}

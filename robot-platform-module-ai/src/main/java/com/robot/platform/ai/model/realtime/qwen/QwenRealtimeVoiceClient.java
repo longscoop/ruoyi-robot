@@ -5,6 +5,7 @@ import com.robot.platform.ai.model.client.RealtimeProviderListener;
 import com.robot.platform.ai.model.client.RealtimeProviderSession;
 import com.robot.platform.ai.model.client.RealtimeTurnListener;
 import com.robot.platform.ai.model.client.RealtimeVoiceClient;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.net.URI;
@@ -21,6 +22,7 @@ public class QwenRealtimeVoiceClient implements RealtimeVoiceClient {
     private final QwenRealtimeCodec codec;
     private final WebSocketConnector connector;
 
+    @Autowired
     public QwenRealtimeVoiceClient(QwenRealtimeCodec codec) {
         this(codec, new JdkWebSocketConnector(HttpClient.newHttpClient()));
     }

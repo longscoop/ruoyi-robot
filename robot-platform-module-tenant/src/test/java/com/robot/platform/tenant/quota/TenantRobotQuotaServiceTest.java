@@ -71,6 +71,16 @@ class TenantRobotQuotaServiceTest {
     }
 
     @Test
+    void missingQuotaReadsAsZeroUntilPlatformAdminConfiguresIt() {
+        TenantQuotaDO quota = service.getQuota(10L);
+
+        assertThat(quota.getTenantId()).isEqualTo(10L);
+        assertThat(quota.getRobotLimit()).isZero();
+        verify(quotaMapper).selectByTenantId(10L);
+        verifyNoInteractions(usageMapper);
+    }
+
+    @Test
     void rejectsLimitBelowCurrentUsage() {
         lockRows(quota(3), usage(2));
 

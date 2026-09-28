@@ -6,7 +6,9 @@ import com.robot.platform.ai.memory.identity.ConversationIdentity;
 import com.robot.platform.ai.memory.policy.MemoryDirectiveParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.DisposableBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.stereotype.Component;
 
 import java.util.Objects;
@@ -14,6 +16,7 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 
 @Component
+@ConditionalOnBean(MemoryExtractor.class)
 public class AsyncMemoryPipeline implements MemoryPipeline, DisposableBean {
     private static final Logger log = LoggerFactory.getLogger(AsyncMemoryPipeline.class);
     private final MemoryExtractor extractor;
@@ -21,6 +24,7 @@ public class AsyncMemoryPipeline implements MemoryPipeline, DisposableBean {
     private final ThreadPoolExecutor executor;
     private final AtomicLong rejectedTasks = new AtomicLong();
 
+    @Autowired
     public AsyncMemoryPipeline(MemoryExtractor extractor, MemoryDirectiveParser directiveParser) {
         this(extractor, directiveParser, 2, 100);
     }

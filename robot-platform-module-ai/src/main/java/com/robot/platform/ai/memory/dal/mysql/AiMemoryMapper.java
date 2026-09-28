@@ -16,6 +16,29 @@ public interface AiMemoryMapper extends BaseMapperX<AiMemoryDO> {
     AiMemoryDO selectByIdAndTenantId(@Param("id") long id, @Param("tenantId") long tenantId);
 
     @TenantIgnore
+    @Select("SELECT * FROM ai_memory WHERE tenant_id = #{tenantId} AND status != 'DELETED' ORDER BY id DESC")
+    List<AiMemoryDO> selectAllByTenantId(@Param("tenantId") long tenantId);
+
+    @TenantIgnore
+    @Update("""
+            UPDATE ai_memory
+            SET content = #{content}, summary = #{summary}, importance = #{importance},
+                expires_at = #{expiresAt}, updated_at = NOW(3)
+            WHERE id = #{id} AND tenant_id = #{tenantId} AND status = 'ACTIVE'
+            """)
+    int updateActiveByTenantId(@Param("id") long id, @Param("tenantId") long tenantId,
+                               @Param("content") String content, @Param("summary") String summary,
+                               @Param("importance") java.math.BigDecimal importance,
+                               @Param("expiresAt") LocalDateTime expiresAt);
+
+    @TenantIgnore
+    @Update("""
+            UPDATE ai_memory SET status = 'DELETED', updated_at = NOW(3)
+            WHERE id = #{id} AND tenant_id = #{tenantId} AND status = 'ACTIVE'
+            """)
+    int invalidateActiveByTenantId(@Param("id") long id, @Param("tenantId") long tenantId);
+
+    @TenantIgnore
     @Select("""
             <script>
             SELECT * FROM ai_memory

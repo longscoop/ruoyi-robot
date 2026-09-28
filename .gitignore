@@ -62,5 +62,4 @@ application-my.yaml
 
 # Isolated development worktrees
 .worktrees/
-docs/
 .superpowers

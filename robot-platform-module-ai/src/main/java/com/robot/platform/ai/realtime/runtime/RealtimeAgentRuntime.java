@@ -4,7 +4,11 @@ import com.robot.platform.ai.agent.dal.dataobject.AiAgentDO;
 import com.robot.platform.ai.agent.service.AiAgentConfig;
 import com.robot.platform.ai.agent.service.AiAgentRobotBindingService;
 import com.robot.platform.ai.agent.service.AiAgentService;
-import com.robot.platform.ai.memory.identity.ConversationIdentity;\nimport com.robot.platform.ai.digitalhuman.dal.dataobject.AiDigitalHumanDO;\nimport com.robot.platform.ai.digitalhuman.realtime.DigitalHumanSessionResolver;\nimport com.robot.platform.ai.digitalhuman.realtime.DigitalHumanStateMapper;\nimport com.robot.platform.framework.common.util.json.JsonUtils;
+import com.robot.platform.ai.memory.identity.ConversationIdentity;
+import com.robot.platform.ai.digitalhuman.dal.dataobject.AiDigitalHumanDO;
+import com.robot.platform.ai.digitalhuman.realtime.DigitalHumanSessionResolver;
+import com.robot.platform.ai.digitalhuman.realtime.DigitalHumanStateMapper;
+import com.robot.platform.framework.common.util.json.JsonUtils;
 import com.robot.platform.ai.memory.identity.ConversationIdentityResolver;
 import com.robot.platform.ai.memory.extract.MemoryExtractor;
 import com.robot.platform.ai.memory.pipeline.MemoryPipeline;
@@ -67,7 +71,16 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
     private TurnGeneration activeGeneration;
     private boolean assistantAudioStarted;
     private String finalizedUserText;
-    private String finalizedAssistantText;\n    private DigitalHumanSessionResolver digitalHumanResolver;\n    private AiDigitalHumanDO digitalHuman;
+    private String finalizedAssistantText;
+    private DigitalHumanSessionResolver digitalHumanResolver;
+    private AiDigitalHumanDO digitalHuman;
+
+    public synchronized void attachDigitalHumanResolver(DigitalHumanSessionResolver resolver) {
+        if (state != State.CONNECTING) {
+            throw new IllegalStateException("Digital human resolver must be attached before session start");
+        }
+        this.digitalHumanResolver = Objects.requireNonNull(resolver, "resolver");
+    }
 
     public RealtimeAgentRuntime(DeviceSession deviceSession,
                                 AiAgentRobotBindingService bindingService,
@@ -217,7 +230,7 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
             providerSession = null;
         }
         if (output != null) {
-            output.sendEvent(new RealtimeServerEvent.SessionClosedEvent(sessionId, closeReason.reason()));
+            emitEvent(new RealtimeServerEvent.SessionClosedEvent(sessionId, closeReason.reason()));
         }
     }
 
@@ -270,7 +283,13 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
             throw new IllegalArgumentException("session.start audio format must not be null");
         }
 
-        if (event.digitalHumanCode() != null && !event.digitalHumanCode().isBlank()) {\n            if (digitalHumanResolver == null) throw new IllegalStateException("Digital human resolver is not available");\n            DigitalHumanSessionResolver.Resolved dh = withTrustedTenant(() -> digitalHumanResolver.resolve(deviceSession.tenantId(), event.digitalHumanCode(), event.agentCode()));\n            digitalHuman = dh.digitalHuman();\n        }\n\n        AiAgentConfig resolved = withTrustedTenant(() -> {
+        if (event.digitalHumanCode() != null && !event.digitalHumanCode().isBlank()) {
+            if (digitalHumanResolver == null) throw new IllegalStateException("Digital human resolver is not available");
+            DigitalHumanSessionResolver.Resolved dh = withTrustedTenant(() -> digitalHumanResolver.resolve(deviceSession.tenantId(), event.digitalHumanCode(), event.agentCode()));
+            digitalHuman = dh.digitalHuman();
+        }
+
+        AiAgentConfig resolved = withTrustedTenant(() -> {
             AiAgentDO agent = bindingService.requireAgentForRobot(
                     deviceSession.tenantId(), deviceSession.robotId(), event.agentCode());
             if (agent == null || agent.getId() == null) {
@@ -302,7 +321,12 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
         }
         state = State.READY;
         if (output != null) {
-            output.sendEvent(new RealtimeServerEvent.SessionCreatedEvent(sessionId, route.mode().name()));\n            if (digitalHuman != null) {\n                var safe = new java.util.LinkedHashMap<String,Object>(); safe.put("id",digitalHuman.getId());safe.put("code",digitalHuman.getCode());safe.put("avatarType",digitalHuman.getAvatarType());safe.put("avatarUrl",digitalHuman.getAvatarUrl());safe.put("avatarResourceUrl",digitalHuman.getAvatarResourceUrl());safe.put("voiceModelId",digitalHuman.getVoiceModelId());safe.put("voiceId",digitalHuman.getVoiceId());safe.put("lipSyncMode",digitalHuman.getLipSyncMode());safe.put("welcomeText",digitalHuman.getWelcomeText());safe.put("interruptEnabled",digitalHuman.getInterruptEnabled());\n                output.sendEvent(new RealtimeServerEvent.DigitalHumanConfigEvent(sessionId, JsonUtils.toJsonString(safe)));\n                output.sendEvent(new RealtimeServerEvent.DigitalHumanStateEvent(sessionId, null, "IDLE", null));\n            }
+            emitEvent(new RealtimeServerEvent.SessionCreatedEvent(sessionId, route.mode().name()));
+            if (digitalHuman != null) {
+                var safe = new java.util.LinkedHashMap<String,Object>(); safe.put("id",digitalHuman.getId());safe.put("code",digitalHuman.getCode());safe.put("avatarType",digitalHuman.getAvatarType());safe.put("avatarUrl",digitalHuman.getAvatarUrl());safe.put("avatarResourceUrl",digitalHuman.getAvatarResourceUrl());safe.put("voiceModelId",digitalHuman.getVoiceModelId());safe.put("voiceId",digitalHuman.getVoiceId());safe.put("lipSyncMode",digitalHuman.getLipSyncMode());safe.put("welcomeText",digitalHuman.getWelcomeText());safe.put("interruptEnabled",digitalHuman.getInterruptEnabled());
+                emitEvent(new RealtimeServerEvent.DigitalHumanConfigEvent(sessionId, JsonUtils.toJsonString(safe)));
+                emitEvent(new RealtimeServerEvent.DigitalHumanStateEvent(sessionId, null, "IDLE", null));
+            }
         }
     }
 
@@ -377,7 +401,7 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
         }
 
         if (output != null) {
-            output.sendEvent(new RealtimeServerEvent.PlaybackStopEvent(
+            emitEvent(new RealtimeServerEvent.PlaybackStopEvent(
                     sessionId, interrupted.turnId(), reason));
         }
         if (providerSession != null) {
@@ -385,7 +409,7 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
         }
         assistantAudioStarted = false;
         if (output != null) {
-            output.sendEvent(new RealtimeServerEvent.AssistantInterruptedEvent(
+            emitEvent(new RealtimeServerEvent.AssistantInterruptedEvent(
                     sessionId, interrupted.turnId(), reason));
         }
     }
@@ -407,7 +431,7 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
         }
         if ((turnId == null || turnId.isBlank() || generation <= 0)
                 && event instanceof ProviderEvent.ProviderError value) {
-            output.sendEvent(new RealtimeServerEvent.SessionErrorEvent(
+            emitEvent(new RealtimeServerEvent.SessionErrorEvent(
                     sessionId, value.code(), value.message()));
             return;
         }
@@ -427,39 +451,39 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
 
         String turnId = callbackGeneration.turnId();
         if (event instanceof ProviderEvent.TranscriptDelta value) {
-            output.sendEvent(new RealtimeServerEvent.InputTranscriptDeltaEvent(
+            emitEvent(new RealtimeServerEvent.InputTranscriptDeltaEvent(
                     sessionId, turnId, value.text()));
         } else if (event instanceof ProviderEvent.TranscriptDone value) {
             finalizedUserText = value.text();
-            output.sendEvent(new RealtimeServerEvent.InputTranscriptDoneEvent(
+            emitEvent(new RealtimeServerEvent.InputTranscriptDoneEvent(
                     sessionId, turnId, value.text()));
         } else if (event instanceof ProviderEvent.TextDelta value) {
-            output.sendEvent(new RealtimeServerEvent.AssistantTextDeltaEvent(
+            emitEvent(new RealtimeServerEvent.AssistantTextDeltaEvent(
                     sessionId, turnId, value.text()));
         } else if (event instanceof ProviderEvent.TextDone value) {
             finalizedAssistantText = value.text();
-            output.sendEvent(new RealtimeServerEvent.AssistantTextDoneEvent(
+            emitEvent(new RealtimeServerEvent.AssistantTextDoneEvent(
                     sessionId, turnId, value.text()));
         } else if (event instanceof ProviderEvent.AudioDelta value) {
             if (!assistantAudioStarted) {
-                output.sendEvent(new RealtimeServerEvent.AssistantAudioStartedEvent(
+                emitEvent(new RealtimeServerEvent.AssistantAudioStartedEvent(
                         sessionId, turnId, PROVIDER_OUTPUT_AUDIO));
                 assistantAudioStarted = true;
             }
             output.sendAudio(value.audio());
         } else if (event instanceof ProviderEvent.AudioDone) {
-            output.sendEvent(new RealtimeServerEvent.AssistantAudioDoneEvent(sessionId, turnId));
-            output.sendEvent(new RealtimeServerEvent.AssistantDoneEvent(sessionId, turnId));
+            emitEvent(new RealtimeServerEvent.AssistantAudioDoneEvent(sessionId, turnId));
+            emitEvent(new RealtimeServerEvent.AssistantDoneEvent(sessionId, turnId));
             if (state == State.ASSISTANT_RESPONDING) {
                 state = State.READY;
             }
             assistantAudioStarted = false;
             submitFinalizedTurn();
         } else if (event instanceof ProviderEvent.ToolCall value) {
-            output.sendEvent(new RealtimeServerEvent.ToolStartedEvent(
+            emitEvent(new RealtimeServerEvent.ToolStartedEvent(
                     sessionId, turnId, value.id(), value.name()));
         } else if (event instanceof ProviderEvent.ProviderError value) {
-            output.sendEvent(new RealtimeServerEvent.SessionErrorEvent(
+            emitEvent(new RealtimeServerEvent.SessionErrorEvent(
                     sessionId, value.code(), value.message()));
         }
     }
@@ -479,6 +503,18 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
                 || finalizedUserText == null || finalizedAssistantText == null) return;
         memoryPipeline.submit(new MemoryExtractor.CompletedTurn(finalizedUserText, finalizedAssistantText),
                 conversationIdentity, agentConfig);
+    }
+
+    private void emitEvent(RealtimeServerEvent event) {
+        output.sendEvent(event);
+        if (digitalHuman == null) {
+            return;
+        }
+        String state = DigitalHumanStateMapper.stateFor(event);
+        if (state != null) {
+            output.sendEvent(new RealtimeServerEvent.DigitalHumanStateEvent(
+                    sessionId, event.turnId(), state, null));
+        }
     }
 
     private boolean matchesActive(TurnGeneration callbackGeneration) {

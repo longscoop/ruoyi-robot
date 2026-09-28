@@ -337,6 +337,50 @@ FROM (
 ) m
 WHERE NOT EXISTS (SELECT 1 FROM `system_menu` existing WHERE existing.id = m.id);
 
+-- Show only modules actually loaded by robot-platform-server. Keep their menu
+-- records for existing role assignments and future module re-enablement.
+UPDATE `system_menu` SET `visible` = b'0'
+WHERE `id` IN (373, 114, 207, 148, 449, 480, 597, 1348, 959, 8200, 1476, 1894, 8000, 860, 1418, 272, 1637);
+-- Legacy AI demo pages call controllers that are not packaged in this server.
+UPDATE `system_menu` SET `visible` = b'0'
+WHERE `id` IN (792, 816, 825, 829, 850, 911, 831, 793);
+-- The upstream code-generation examples have no exposed API in this server.
+UPDATE `system_menu` SET `visible` = b'0'
+WHERE `id` = 83 OR `parent_id` = 83;
+
+INSERT INTO `system_menu` (`id`, `name`, `permission`, `type`, `sort`, `parent_id`, `path`, `icon`, `component`, `component_name`, `status`, `visible`, `keep_alive`, `always_show`, `creator`, `create_time`, `updater`, `update_time`, `deleted`)
+SELECT m.id, m.name, m.permission, m.type, m.sort, m.parent_id, m.path, m.icon, m.component, m.component_name, 0, b'1', b'1', b'0', 'admin', NOW(), 'admin', NOW(), b'0'
+FROM (
+  SELECT 910200 id, '智能体管理' name, 'ai:agent:query' permission, 2 type, 1 sort, 791 parent_id, 'enterprise' path, 'ep:cpu' icon, 'ai/enterprise/index' component, 'AiEnterpriseManagement' component_name UNION ALL
+  SELECT 910210, '知识库管理', 'ai:knowledge:query', 2, 2, 791, 'knowledge', 'ep:collection', 'ai/knowledge/index', 'AiKnowledgeManagement'
+) m WHERE NOT EXISTS (SELECT 1 FROM `system_menu` existing WHERE existing.id = m.id);
+
+INSERT INTO `system_menu` (`id`, `name`, `permission`, `type`, `sort`, `parent_id`, `path`, `icon`, `component`, `component_name`, `status`, `visible`, `keep_alive`, `always_show`, `creator`, `create_time`, `updater`, `update_time`, `deleted`)
+SELECT m.id, m.name, m.permission, 3, m.sort, m.parent_id, '', '', '', NULL, 0, b'1', b'0', b'0', 'admin', NOW(), 'admin', NOW(), b'0'
+FROM (
+  SELECT 910201 id, '智能体新增' name, 'ai:agent:create' permission, 1 sort, 910200 parent_id UNION ALL
+  SELECT 910202, '智能体修改', 'ai:agent:update', 2, 910200 UNION ALL
+  SELECT 910203, '智能体删除', 'ai:agent:delete', 3, 910200 UNION ALL
+  SELECT 910204, '机器人绑定', 'ai:agent:bind', 4, 910200 UNION ALL
+  SELECT 910205, '提示词查询', 'ai:prompt:query', 5, 910200 UNION ALL
+  SELECT 910206, '提示词新增', 'ai:prompt:create', 6, 910200 UNION ALL
+  SELECT 910207, '模型查询', 'ai:model:query', 7, 910200 UNION ALL
+  SELECT 910208, '模型新增', 'ai:model:create', 8, 910200 UNION ALL
+  SELECT 910209, '模型修改', 'ai:model:update', 9, 910200 UNION ALL
+  SELECT 910211, '模型删除', 'ai:model:delete', 10, 910200 UNION ALL
+  SELECT 910212, '服务商查询', 'ai:provider:query', 11, 910200 UNION ALL
+  SELECT 910213, '服务商新增', 'ai:provider:create', 12, 910200 UNION ALL
+  SELECT 910214, '服务商修改', 'ai:provider:update', 13, 910200 UNION ALL
+  SELECT 910215, '服务商删除', 'ai:provider:delete', 14, 910200 UNION ALL
+  SELECT 910216, '知识库新增', 'ai:knowledge:create', 1, 910210 UNION ALL
+  SELECT 910217, '知识库修改', 'ai:knowledge:update', 2, 910210 UNION ALL
+  SELECT 910218, '知识库删除', 'ai:knowledge:delete', 3, 910210 UNION ALL
+  SELECT 910219, '文档查询', 'ai:document:query', 4, 910210 UNION ALL
+  SELECT 910220, '文档新增', 'ai:document:create', 5, 910210 UNION ALL
+  SELECT 910221, '文档修改', 'ai:document:update', 6, 910210 UNION ALL
+  SELECT 910222, '文档删除', 'ai:document:delete', 7, 910210
+) m WHERE NOT EXISTS (SELECT 1 FROM `system_menu` existing WHERE existing.id = m.id);
+
 
 -- Realtime Agent Core Task 2: tenant-scoped provider/model/prompt/agent persistence.
 CREATE TABLE IF NOT EXISTS `ai_model_provider` (
@@ -500,7 +544,6 @@ CREATE TABLE IF NOT EXISTS `ai_realtime_session` (
   KEY `idx_ai_realtime_robot` (`tenant_id`,`robot_id`,`connected_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='AI 实时会话';
 
-
 -- Realtime Agent Memory Task 1: tenant-scoped long-term memory persistence.
 CREATE TABLE IF NOT EXISTS `ai_memory` (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
@@ -537,17 +580,17 @@ CREATE TABLE IF NOT EXISTS `ai_memory` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='AI 长期记忆';
 
 
--- Realtime Agent AI Center: six tenant-admin pages and button permissions.
+-- Realtime Agent menu IDs and permissions; navigation is unified below.
 INSERT INTO system_menu (id,name,permission,type,sort,parent_id,path,icon,component,component_name,status,visible,keep_alive,always_show,creator,create_time,updater,update_time,deleted)
 SELECT 920000,'AI 中心','',1,5,910000,'ai','ep:chat-dot-round',NULL,NULL,0,b'1',b'1',b'1','admin',NOW(),'admin',NOW(),b'0' WHERE NOT EXISTS(SELECT 1 FROM system_menu WHERE id=920000);
 INSERT INTO system_menu (id,name,permission,type,sort,parent_id,path,icon,component,component_name,status,visible,keep_alive,always_show,creator,create_time,updater,update_time,deleted)
-SELECT m.id,m.name,m.permission,2,m.sort,920000,m.path,'',m.component,m.component_name,0,b'1',b'1',b'1','admin',NOW(),'admin',NOW(),b'0' FROM (
-SELECT 920010 id,'智能体' name,'ai:agent:query' permission,1 sort,'agent' path,'ai/agent/index' component,'AiAgent' component_name UNION ALL
-SELECT 920020,'Prompt','ai:prompt:query',2,'prompt','ai/prompt/index','AiPrompt' UNION ALL
-SELECT 920030,'模型','ai:model:query',3,'model','ai/model/index','AiModel' UNION ALL
-SELECT 920040,'对话记录','ai:conversation:query',4,'conversation','ai/conversation/index','AiConversation' UNION ALL
-SELECT 920050,'长期记忆','ai:memory:query',5,'memory','ai/memory/index','AiMemory' UNION ALL
-SELECT 920060,'实时会话','ai:realtime:query',6,'realtime','ai/realtime/index','AiRealtime')m
+SELECT m.id,m.name,m.permission,2,m.sort,920000,m.path,m.icon,m.component,m.component_name,0,b'1',b'1',b'1','admin',NOW(),'admin',NOW(),b'0' FROM (
+SELECT 920010 id,'智能体' name,'ai:agent:query' permission,1 sort,'agent' path,'ep:cpu' icon,'ai/agent/index' component,'AiAgent' component_name UNION ALL
+SELECT 920020,'Prompt','ai:prompt:query',2,'prompt','ep:document','ai/prompt/index','AiPrompt' UNION ALL
+SELECT 920030,'模型','ai:model:query',3,'model','ep:connection','ai/model/index','AiModel' UNION ALL
+SELECT 920040,'对话记录','ai:conversation:query',4,'conversation','ep:chat-line-square','ai/conversation/index','AiConversation' UNION ALL
+SELECT 920050,'长期记忆','ai:memory:query',5,'memory','ep:collection','ai/memory/index','AiMemory' UNION ALL
+SELECT 920060,'实时会话','ai:realtime:query',6,'realtime','ep:video-play','ai/realtime/index','AiRealtime')m
 WHERE NOT EXISTS(SELECT 1 FROM system_menu e WHERE e.id=m.id);
 INSERT INTO system_menu (id,name,permission,type,sort,parent_id,path,icon,component,component_name,status,visible,keep_alive,always_show,creator,create_time,updater,update_time,deleted)
 SELECT m.id,m.name,m.permission,3,m.sort,m.parent_id,'','','',NULL,0,b'1',b'0',b'0','admin',NOW(),'admin',NOW(),b'0' FROM (
@@ -623,3 +666,46 @@ SELECT m.id,m.name,m.permission,3,m.sort,920070,'','','',NULL,0,b'1',b'0',b'0','
  SELECT 920143,'数字人删除','ai:digital-human:delete',3 UNION ALL
  SELECT 920144,'数字人预览','ai:digital-human:preview',4
 )m WHERE NOT EXISTS(SELECT 1 FROM system_menu e WHERE e.id=m.id);
+
+-- Knowledge management stores curated text documents. Retrieval, parsing and
+-- embeddings are deliberately not represented until their services exist.
+CREATE TABLE IF NOT EXISTS `ai_knowledge_base` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `tenant_id` bigint NOT NULL,
+  `name` varchar(128) NOT NULL,
+  `code` varchar(64) NOT NULL,
+  `description` varchar(1000) DEFAULT NULL,
+  `creator` varchar(64) DEFAULT '',
+  `create_time` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updater` varchar(64) DEFAULT '',
+  `update_time` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted` bit(1) NOT NULL DEFAULT b'0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_ai_knowledge_base_tenant_code` (`tenant_id`, `code`),
+  KEY `idx_ai_knowledge_base_tenant` (`tenant_id`, `deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='AI 知识库';
+
+CREATE TABLE IF NOT EXISTS `ai_knowledge_document` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `tenant_id` bigint NOT NULL,
+  `base_id` bigint NOT NULL,
+  `title` varchar(255) NOT NULL,
+  `content` longtext NOT NULL,
+  `creator` varchar(64) DEFAULT '',
+  `create_time` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updater` varchar(64) DEFAULT '',
+  `update_time` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted` bit(1) NOT NULL DEFAULT b'0',
+  PRIMARY KEY (`id`),
+  KEY `idx_ai_knowledge_document_base` (`tenant_id`, `base_id`, `deleted`, `id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='AI 知识文档';
+
+-- One AI navigation group: keep the existing enterprise agent/model/prompt page
+-- and knowledge page under AI 大模型. The newer conversation, memory, realtime
+-- and digital-human pages join them. Preserve IDs and role assignments.
+UPDATE system_menu SET visible = b'0'
+WHERE id IN (920000, 920010, 920020, 920030);
+UPDATE system_menu SET parent_id = 791, sort = CASE id
+  WHEN 920040 THEN 3 WHEN 920050 THEN 4 WHEN 920060 THEN 5 WHEN 920070 THEN 6 END,
+  visible = b'1'
+WHERE id IN (920040, 920050, 920060, 920070);

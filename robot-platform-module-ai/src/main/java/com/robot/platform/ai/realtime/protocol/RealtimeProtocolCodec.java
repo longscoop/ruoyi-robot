@@ -13,7 +13,8 @@ public class RealtimeProtocolCodec {
 
     private static final Set<String> SESSION_START_FIELDS = Set.of("type", "agentCode", "identity", "audio", "digitalHumanCode", "clientCapabilities");
     private static final Set<String> IDENTITY_FIELDS = Set.of("memberId", "type", "confidence");
-    private static final Set<String> AUDIO_FIELDS = Set.of("codec", "sampleRate", "channels");\n    private static final Set<String> CAPABILITY_FIELDS = Set.of("viseme", "audioLevelLipSync");
+    private static final Set<String> AUDIO_FIELDS = Set.of("codec", "sampleRate", "channels");
+    private static final Set<String> CAPABILITY_FIELDS = Set.of("viseme", "audioLevelLipSync");
 
     private final Clock clock;
     private final AtomicLong sequence = new AtomicLong();
@@ -79,10 +80,19 @@ public class RealtimeProtocolCodec {
         String agentCode = requireText(root, "agentCode");
         RealtimeClientEvent.CandidateIdentity identity = decodeIdentity(root.get("identity"));
         RealtimeAudioFormat audio = decodeAudio(root.get("audio"));
-        String digitalHumanCode = optionalText(root, "digitalHumanCode");\n        RealtimeClientEvent.ClientCapabilities capabilities = decodeCapabilities(root.get("clientCapabilities"));\n        return new RealtimeClientEvent.SessionStartEvent(agentCode, identity, audio, digitalHumanCode, capabilities);
+        String digitalHumanCode = optionalText(root, "digitalHumanCode");
+        RealtimeClientEvent.ClientCapabilities capabilities = decodeCapabilities(root.get("clientCapabilities"));
+        return new RealtimeClientEvent.SessionStartEvent(agentCode, identity, audio, digitalHumanCode, capabilities);
     }
 
-    private static RealtimeClientEvent.ClientCapabilities decodeCapabilities(JsonNode node) {\n        if (node == null || node.isNull()) return null;\n        if (!node.isObject()) throw new IllegalArgumentException("clientCapabilities must be an object");\n        rejectUnknownFields(node, CAPABILITY_FIELDS, "clientCapabilities");\n        return new RealtimeClientEvent.ClientCapabilities(node.path("viseme").asBoolean(false), node.path("audioLevelLipSync").asBoolean(false));\n    }\n\n    private static RealtimeClientEvent.CandidateIdentity decodeIdentity(JsonNode identity) {
+    private static RealtimeClientEvent.ClientCapabilities decodeCapabilities(JsonNode node) {
+        if (node == null || node.isNull()) return null;
+        if (!node.isObject()) throw new IllegalArgumentException("clientCapabilities must be an object");
+        rejectUnknownFields(node, CAPABILITY_FIELDS, "clientCapabilities");
+        return new RealtimeClientEvent.ClientCapabilities(node.path("viseme").asBoolean(false), node.path("audioLevelLipSync").asBoolean(false));
+    }
+
+    private static RealtimeClientEvent.CandidateIdentity decodeIdentity(JsonNode identity) {
         if (identity == null || identity.isNull()) {
             return null;
         }
@@ -152,7 +162,13 @@ public class RealtimeProtocolCodec {
             putIfNotNull(root, "toolCallId", value.toolCallId());
             putIfNotNull(root, "name", value.name());
             putIfNotNull(root, "result", value.result());
-        } else if (event instanceof RealtimeServerEvent.DigitalHumanConfigEvent value) {\n            putIfNotNull(root, "config", value.configJson());\n        } else if (event instanceof RealtimeServerEvent.DigitalHumanStateEvent value) {\n            putIfNotNull(root, "state", value.state()); putIfNotNull(root, "actionCode", value.actionCode());\n        } else if (event instanceof RealtimeServerEvent.DigitalHumanVisemeEvent value) {\n            putIfNotNull(root, "timeline", value.timelineJson());\n        } else if (event instanceof RealtimeServerEvent.SessionClosedEvent value) {
+        } else if (event instanceof RealtimeServerEvent.DigitalHumanConfigEvent value) {
+            putIfNotNull(root, "config", value.configJson());
+        } else if (event instanceof RealtimeServerEvent.DigitalHumanStateEvent value) {
+            putIfNotNull(root, "state", value.state()); putIfNotNull(root, "actionCode", value.actionCode());
+        } else if (event instanceof RealtimeServerEvent.DigitalHumanVisemeEvent value) {
+            putIfNotNull(root, "timeline", value.timelineJson());
+        } else if (event instanceof RealtimeServerEvent.SessionClosedEvent value) {
             putIfNotNull(root, "reason", value.reason());
         }
     }

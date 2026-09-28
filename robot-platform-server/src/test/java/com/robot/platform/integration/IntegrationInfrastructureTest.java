@@ -25,12 +25,19 @@ class IntegrationInfrastructureTest extends AbstractRobotPlatformIntegrationTest
         var jdbc = new JdbcTemplate(dataSource);
         assertThat(jdbc.queryForObject("SELECT VERSION()", String.class)).startsWith("8.4.");
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM system_users", Long.class)).isPositive();
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM QRTZ_JOB_DETAILS", Long.class)).isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM QRTZ_JOB_DETAILS", Long.class)).isPositive();
         try (var connection = dataSource.getConnection()) {
             var schema = new ClassPathResource("mysql/robot-platform.sql");
             ScriptUtils.executeSqlScript(connection, schema);
             ScriptUtils.executeSqlScript(connection, schema);
         }
+        assertThat(jdbc.queryForObject("SELECT visible + 0 FROM system_menu WHERE id = 920000", Integer.class))
+                .isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM system_menu WHERE id IN "
+                + "(920010, 920020, 920030) AND visible = 1", Integer.class)).isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM system_menu WHERE id IN "
+                + "(920040, 920050, 920060, 920070) AND parent_id = 791 AND visible = 1", Integer.class))
+                .isEqualTo(4);
     }
 
     @Test

@@ -1,6 +1,4 @@
 <template>
-  <doc-alert title="短信配置" url="https://doc.iocoder.cn/sms/" />
-
   <ContentWrap>
     <el-form
       class="-mb-15px"

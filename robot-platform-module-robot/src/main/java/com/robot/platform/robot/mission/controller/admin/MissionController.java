@@ -25,7 +25,7 @@ import static com.robot.platform.framework.security.core.util.SecurityFrameworkU
 /** Admin routes depend only on MissionService, preserving mapper and transport boundaries. */
 @Tag(name = "管理后台 - 任务")
 @RestController
-@RequestMapping("/admin-api/robot/missions")
+@RequestMapping("/robot/missions")
 @Validated
 @RequiredArgsConstructor
 public class MissionController {

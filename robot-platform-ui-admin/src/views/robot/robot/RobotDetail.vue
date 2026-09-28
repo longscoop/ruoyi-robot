@@ -22,7 +22,7 @@
         status?.lastHeartbeatTime || '-'
       }}</el-descriptions-item>
     </el-descriptions>
-    </el-tab-pane><el-tab-pane label="智能体" name="agent"><AgentBindingsTab :robot-id="robot.id!" /></el-tab-pane></el-tabs>
+    </el-tab-pane><el-tab-pane label="AI 大模型智能体" name="agent"><AgentBindingsTab :robot-id="robot.id!" /></el-tab-pane></el-tabs>
     <el-divider v-if="tab==='overview'">能力</el-divider>
     <el-empty v-if="tab === 'overview' && !loading && capabilities.length === 0" description="未配置能力" /><el-table
       v-if="tab === 'overview' && (loading || capabilities.length > 0)"

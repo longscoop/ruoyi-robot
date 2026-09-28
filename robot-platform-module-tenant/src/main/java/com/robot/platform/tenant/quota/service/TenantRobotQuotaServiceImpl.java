@@ -50,7 +50,7 @@ public class TenantRobotQuotaServiceImpl implements TenantRobotQuotaService {
     public TenantQuotaDO getQuota(long tenantId) {
         TenantQuotaDO quota = quotaMapper.selectByTenantId(tenantId);
         if (quota == null) {
-            throw exception(TENANT_QUOTA_NOT_EXISTS);
+            return TenantQuotaDO.builder().tenantId(tenantId).robotLimit(0).build();
         }
         return quota;
     }

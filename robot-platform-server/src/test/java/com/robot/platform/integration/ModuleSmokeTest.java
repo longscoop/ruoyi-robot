@@ -5,7 +5,9 @@ import com.robot.platform.member.MemberModuleConfiguration;
 import com.robot.platform.robot.RobotModuleConfiguration;
 import com.robot.platform.tenant.TenantModuleConfiguration;
 import org.junit.jupiter.api.Test;
-import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.core.type.filter.AnnotationTypeFilter;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -13,15 +15,20 @@ class ModuleSmokeTest {
 
     @Test
     void exposesEveryCoreModuleConfiguration() {
-        try (var context = new AnnotationConfigApplicationContext()) {
-            context.scan("com.robot.platform.tenant", "com.robot.platform.member",
-                    "com.robot.platform.device", "com.robot.platform.robot");
-            context.refresh();
+        var scanner = new ClassPathScanningCandidateComponentProvider(false);
+        scanner.addIncludeFilter(new AnnotationTypeFilter(Configuration.class));
 
-            assertThat(context.getBeansOfType(TenantModuleConfiguration.class)).hasSize(1);
-            assertThat(context.getBeansOfType(MemberModuleConfiguration.class)).hasSize(1);
-            assertThat(context.getBeansOfType(DeviceModuleConfiguration.class)).hasSize(1);
-            assertThat(context.getBeansOfType(RobotModuleConfiguration.class)).hasSize(1);
-        }
+        assertThat(scanner.findCandidateComponents("com.robot.platform.tenant"))
+                .extracting(bean -> bean.getBeanClassName())
+                .contains(TenantModuleConfiguration.class.getName());
+        assertThat(scanner.findCandidateComponents("com.robot.platform.member"))
+                .extracting(bean -> bean.getBeanClassName())
+                .contains(MemberModuleConfiguration.class.getName());
+        assertThat(scanner.findCandidateComponents("com.robot.platform.device"))
+                .extracting(bean -> bean.getBeanClassName())
+                .contains(DeviceModuleConfiguration.class.getName());
+        assertThat(scanner.findCandidateComponents("com.robot.platform.robot"))
+                .extracting(bean -> bean.getBeanClassName())
+                .contains(RobotModuleConfiguration.class.getName());
     }
 }

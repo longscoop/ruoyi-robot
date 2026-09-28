@@ -4,6 +4,7 @@ import com.robot.platform.ai.model.client.ResolvedModel;
 import com.robot.platform.ai.model.client.RealtimeProviderSession;
 import com.robot.platform.ai.model.client.event.ProviderEvent;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 import java.net.URI;
 import java.net.http.WebSocket;
@@ -16,6 +17,15 @@ import java.util.concurrent.CompletableFuture;
 import static org.junit.jupiter.api.Assertions.*;
 
 class DoubaoRealtimeVoiceClientTest {
+
+    @Test
+    void springCreatesClientWithCodec() {
+        try (var context = new AnnotationConfigApplicationContext()) {
+            context.register(DoubaoRealtimeCodec.class, DoubaoRealtimeVoiceClient.class);
+            context.refresh();
+            assertEquals("DOUBAO", context.getBean(DoubaoRealtimeVoiceClient.class).providerType());
+        }
+    }
 
     @Test
     void buildsTransportFromProviderConfigurationWithoutHardcodedAccountValues() {

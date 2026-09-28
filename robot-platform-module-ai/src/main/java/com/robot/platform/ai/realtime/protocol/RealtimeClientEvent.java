@@ -13,14 +13,21 @@ public sealed interface RealtimeClientEvent {
     }
 
     record SessionStartEvent(String agentCode, CandidateIdentity identity,
-                             RealtimeAudioFormat audio) implements RealtimeClientEvent {
+                             RealtimeAudioFormat audio, String digitalHumanCode,
+                             ClientCapabilities clientCapabilities) implements RealtimeClientEvent {
+        public SessionStartEvent(String agentCode, CandidateIdentity identity, RealtimeAudioFormat audio) {
+            this(agentCode, identity, audio, null, null);
+        }
+
         @Override
         public String type() {
             return "session.start";
         }
     }
 
-    record ClientCapabilities(boolean viseme, boolean audioLevelLipSync) {}\n\n    record SpeechStartedEvent(String eventId) implements RealtimeClientEvent {
+    record ClientCapabilities(boolean viseme, boolean audioLevelLipSync) {}
+
+    record SpeechStartedEvent(String eventId) implements RealtimeClientEvent {
         @Override
         public String type() {
             return "input.speech_started";

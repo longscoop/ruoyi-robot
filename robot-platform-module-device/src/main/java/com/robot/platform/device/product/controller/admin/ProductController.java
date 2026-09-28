@@ -21,7 +21,7 @@ import static com.robot.platform.framework.common.pojo.CommonResult.success;
 
 @Tag(name = "管理后台 - 产品型号")
 @RestController
-@RequestMapping("/admin-api/device/products")
+@RequestMapping("/device/products")
 @Validated
 @RequiredArgsConstructor
 public class ProductController {

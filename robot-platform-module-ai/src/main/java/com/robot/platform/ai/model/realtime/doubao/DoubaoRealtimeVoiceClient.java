@@ -7,6 +7,7 @@ import com.robot.platform.ai.model.client.RealtimeProviderSession;
 import com.robot.platform.ai.model.client.RealtimeTurnListener;
 import com.robot.platform.ai.model.client.RealtimeVoiceClient;
 import com.robot.platform.framework.common.util.json.JsonUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.net.URI;
@@ -24,6 +25,7 @@ public class DoubaoRealtimeVoiceClient implements RealtimeVoiceClient {
     private final DoubaoRealtimeCodec codec;
     private final WebSocketConnector connector;
 
+    @Autowired
     public DoubaoRealtimeVoiceClient(DoubaoRealtimeCodec codec) {
         this(codec, new JdkWebSocketConnector(HttpClient.newHttpClient()));
     }

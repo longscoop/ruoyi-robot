@@ -20,7 +20,9 @@ class AiCoreSchemaContractTest {
                 "ai_model",
                 "ai_prompt",
                 "ai_agent",
-                "ai_agent_robot")) {
+                "ai_agent_robot",
+                "ai_knowledge_base",
+                "ai_knowledge_document")) {
             assertTrue(sql.contains("CREATE TABLE IF NOT EXISTS `" + table + "`")
                     || sql.contains("CREATE TABLE `" + table + "`"), table);
         }

@@ -1,6 +1,4 @@
 <template>
-  <doc-alert title="邮件配置" url="https://doc.iocoder.cn/mail" />
-
   <ContentWrap>
     <!-- 搜索工作栏 -->
     <el-form

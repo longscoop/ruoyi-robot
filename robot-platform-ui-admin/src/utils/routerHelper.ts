@@ -11,9 +11,28 @@ import {
 } from '@/utils/routeParams'
 
 const modules = import.meta.glob('../views/**/*.{vue,tsx}')
+// 旧菜单可能仍由后端返回；这些模块没有可用页面。
+const unavailableViewModules = new Set([
+  'bpm',
+  'crm',
+  'erp',
+  'fms',
+  'hrm',
+  'im',
+  'iot',
+  'mall',
+  'member',
+  'mes',
+  'mp',
+  'oa',
+  'pay',
+  'pms',
+  'report',
+  'wms'
+])
 /**
  * 注册一个异步组件
- * @param componentPath 例:/bpm/oa/leave/detail
+ * @param componentPath 例:/system/user/index
  */
 export const registerComponent = (componentPath: string) => {
   for (const item in modules) {
@@ -75,6 +94,23 @@ export const generateRoute = (routes: AppCustomRouteRecordRaw[]): AppRouteRecord
   const res: AppRouteRecordRaw[] = []
   const modulesRoutesKeys = Object.keys(modules)
   for (const route of routes) {
+    const routeModule = (splitRoutePath(route.component).path || route.path)
+      .replace(/^\//, '')
+      .split('/')[0]
+    if (unavailableViewModules.has(routeModule)) continue
+    const external = isUrl(route.path)
+    if (external) {
+      const hostname = new URL(
+        route.path.includes('://') ? route.path : `https://${route.path}`
+      ).hostname.toLowerCase()
+      if (hostname === 'iocoder.cn' || hostname.endsWith('.iocoder.cn')) continue
+    }
+    const children = route.children?.length ? generateRoute(route.children) : undefined
+    const hasChildren = !!children?.length
+    if (!external && !hasChildren) {
+      const componentPath = splitRoutePath(route.component).path || splitRoutePath(route.path).path
+      if (!modulesRoutesKeys.some((key) => key.includes(componentPath))) continue
+    }
     const componentRoute = splitRoutePath(route.component)
     const pathRoute = isUrl(route.path)
       ? parseExternalRouteLocation(route.path)
@@ -91,10 +127,7 @@ export const generateRoute = (routes: AppCustomRouteRecordRaw[]): AppRouteRecord
       icon: route.icon,
       hidden: !route.visible,
       noCache: !route.keepAlive,
-      alwaysShow:
-        route.children &&
-        route.children.length > 0 &&
-        (route.alwaysShow !== undefined ? route.alwaysShow : true)
+      alwaysShow: hasChildren && (route.alwaysShow !== undefined ? route.alwaysShow : true)
     } as any
     // 后端 MenuDO.component 或 path 可通过 ?/# 携带菜单参数，对齐 vben 的 meta.query/hash/params 行为。
     const routeQuery = {
@@ -129,7 +162,7 @@ export const generateRoute = (routes: AppCustomRouteRecordRaw[]): AppRouteRecord
       meta: meta
     }
     //处理顶级非目录路由
-    if (!route.children && Number(route.parentId) === 0 && route.component) {
+    if (!hasChildren && Number(route.parentId) === 0 && route.component) {
       data.component = Layout
       data.meta = {
         hidden: meta.hidden
@@ -153,10 +186,10 @@ export const generateRoute = (routes: AppCustomRouteRecordRaw[]): AppRouteRecord
       data.children = [childrenData]
     } else {
       // 目录
-      if (route.children?.length) {
+      if (hasChildren) {
         // 顶级目录承载后台整体框架；非顶级目录只作为 router-view 占位，避免多级菜单嵌套 Layout。
         data.component = Number(route.parentId) === 0 ? Layout : getParentLayout()
-        data.redirect = getRedirect(route.path, route.children)
+        data.redirect = getRedirect(route.path, children || [])
         // 外链
       } else if (isUrl(route.path)) {
         const externalPath = getExternalRoutePath(route.id, data.name)
@@ -188,8 +221,8 @@ export const generateRoute = (routes: AppCustomRouteRecordRaw[]): AppRouteRecord
           : modulesRoutesKeys.findIndex((ev) => ev.includes(route.path))
         data.component = modules[modulesRoutesKeys[index]]
       }
-      if (route.children) {
-        data.children = generateRoute(route.children)
+      if (hasChildren && children) {
+        data.children = children
         // Vue Router 要求路由 name 全局唯一；后端菜单可能生成父子同名，例如 /mall/trade/delivery/express。
         // 父级只有一个同名默认页时才折叠；存在兄弟节点时必须保留子菜单，例如商城装修下的装修模板。
         const sameNameChild = findDescendantRouteByName(data.children, data.name)
@@ -266,13 +299,12 @@ const removeDescendantRoute = (
   })
 }
 
-export const getRedirect = (parentPath: string, children: AppCustomRouteRecordRaw[]) => {
-  if (!children || children.length == 0) {
+export const getRedirect = (parentPath: string, children: AppRouteRecordRaw[]): string => {
+  if (!children.length) {
     return parentPath
   }
   const path = generateRoutePath(parentPath, children[0].path)
-  // 递归子节点
-  if (children[0].children) return getRedirect(path, children[0].children)
+  return children[0].children?.length ? getRedirect(path, children[0].children) : path
 }
 const generateRoutePath = (parentPath: string, path: string) => {
   if (parentPath.endsWith('/')) {

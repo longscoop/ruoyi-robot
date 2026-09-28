@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import static com.robot.platform.framework.common.pojo.CommonResult.success;
 
-@Tag(name = "管理后台 - 设备") @RestController @RequestMapping("/admin-api/device/devices") @Validated @RequiredArgsConstructor
+@Tag(name = "管理后台 - 设备") @RestController @RequestMapping("/device/devices") @Validated @RequiredArgsConstructor
 public class DeviceController {
     private final DeviceService deviceService;
     @PostMapping @PreAuthorize("@ss.hasPermission('device:device:create')") @Operation(summary = "设备入库")

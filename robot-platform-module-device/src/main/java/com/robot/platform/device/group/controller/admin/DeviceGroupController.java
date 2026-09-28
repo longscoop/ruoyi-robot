@@ -13,7 +13,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import static com.robot.platform.framework.common.pojo.CommonResult.success;
-@RestController @RequestMapping("/admin-api/device/groups") @Validated @RequiredArgsConstructor public class DeviceGroupController {
+@RestController @RequestMapping("/device/groups") @Validated @RequiredArgsConstructor public class DeviceGroupController {
  private final DeviceGroupService service;
  @PostMapping @PreAuthorize("@ss.hasPermission('device:group:create')") public CommonResult<Long> create(@Validated @RequestBody GroupReq r){return success(service.create(r.name,r.remark));}
  @PutMapping("/{id}") @PreAuthorize("@ss.hasPermission('device:group:update')") public CommonResult<Boolean> update(@PathVariable @Positive long id,@Validated @RequestBody GroupReq r){service.update(id,r.name,r.remark);return success(true);}

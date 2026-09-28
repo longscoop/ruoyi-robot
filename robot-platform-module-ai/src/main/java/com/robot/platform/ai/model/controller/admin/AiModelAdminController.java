@@ -16,7 +16,7 @@ import java.util.List;
 import static com.robot.platform.framework.common.pojo.CommonResult.success;
 
 @RestController
-@RequestMapping("/admin-api/ai/models")
+@RequestMapping("/ai/models")
 @Validated
 @RequiredArgsConstructor
 public class AiModelAdminController {

@@ -19,7 +19,7 @@ import static com.robot.platform.framework.common.pojo.CommonResult.success;
 
 @Tag(name = "管理后台 - 租户机器人配额")
 @RestController
-@RequestMapping("/admin-api/tenant/quotas")
+@RequestMapping("/tenant/quotas")
 @Validated
 @RequiredArgsConstructor
 public class TenantQuotaController {

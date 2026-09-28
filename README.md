@@ -1,113 +1,620 @@
-# RuoYi Robot
+# 🤖 RuoYi Robot
 
-RuoYi Robot 是社区独立开源项目，并非 RuoYi 官方项目。
+> 开源的机器人运营与 AI Agent 平台，让机器人快速拥有云端管理、设备接入、任务调度、AI 智能体与数字人能力。
 
-RuoYi Robot is a Java 17 modular-monolith foundation with a MySQL-oriented backend and Vue 3 administration shell. Its Maven modules use `robot-platform-*` and its Java packages use `com.robot.platform`. Existing HTTP API paths and physical database table/sequence names are preserved for compatibility.
+**RuoYi Robot** 是一个面向机器人、具身智能和 AI 应用的开源平台，基于 **RuoYi-Vue-Pro** 二次开发。
 
-## Platform
+项目将传统 IoT 设备管理、机器人运营平台与 AI Agent 能力结合，为家庭机器人、服务机器人、巡检机器人、陪伴机器人以及机器人开发团队提供统一的云端基础设施。
 
-- Backend reactor module: `robot-platform-server`
-- Application entry point: `com.robot.platform.server.RobotPlatformApplication`
-- Admin frontend: `robot-platform-ui-admin`
-- Runtime baseline: Java 17, Spring Boot, MySQL, Redis, and Vue 3
+平台支持机器人设备接入、MQTT 通信、在线状态、任务下发、机器人绑定、多租户运营，并提供大模型、Prompt、Agent、知识库、Realtime Agent、长期记忆和数字人等 AI 能力。
 
-MQTT configuration and callback protection are documented in [MQTT boundary](docs/mqtt-boundary.md).
+✨ 为什么做 RuoYi Robot
 
-## 本地运行机器人平台
+开发一款真正可运营的机器人产品，除了 ROS、导航、视觉、语音等机器人端能力，还需要大量云端基础设施：
 
-### 前置条件
+- 机器人设备注册、激活和认证
+- MQTT 长连接与实时状态
+- 机器人任务下发和执行结果回传
+- 用户与机器人绑定
+- 多租户与权限管理
+- OTA 与设备运维
+- AI 大模型接入
+- Agent 与机器人能力调用
+- 知识库和长期记忆
+- 实时语音交互
+- 数字人
+- Web / APP / H5 接入
 
-- JDK 17 与 Maven 3.9+；后端以 Java 17 编译和运行。
-- Docker Compose v2（MySQL 8.4、Redis 7、EMQX 5.8）。
-- Node.js 20.19+（或 22.12+）与 pnpm 9+，用于管理后台。当前 Node 20.12 不能运行 Vite 8。
-- 不要把 MQTT 密钥、设备 secret、回调 token 或登录 token 提交进 `.env`、脚本输出或前端代码。
+RuoYi Robot 希望把这些通用能力沉淀为一个可复用的开源平台。
 
-### 启动依赖与后端
+机器人团队可以把更多精力放在机器人本身，而不是重复开发账号、权限、设备管理、MQTT、任务系统和 AI 基础设施。
 
-在仓库根目录创建一个未提交的 `.env`，为 `MYSQL_PASSWORD`、`MYSQL_ROOT_PASSWORD`、
-`EMQX_NODE_COOKIE`、`EMQX_DASHBOARD_PASSWORD`、`MQTT_CALLBACK_TOKEN`、`MQTT_CLOUD_USERNAME` 和
-`MQTT_CLOUD_PASSWORD` 填入本机强随机值。模拟器/闭环验证还需要与已激活设备相匹配的
-`MQTT_USERNAME` 和 `MQTT_SECRET`。不要使用示例值部署到共享环境：
+# 🏗️ 系统架构
 
-```bash
-docker compose up -d --wait mysql redis emqx
-mvn -pl robot-platform-server -am spring-boot:run -Dspring-boot.run.profiles=local
+![architecture-diagram](./docs/images/architecture-diagram.png)
+
+# 🔐 API 架构
+
+RuoYi Robot 根据调用方划分三套 API 安全边界：
+
+| 调用方         | API              | 用途                                       |
+| -------------- | ---------------- | ------------------------------------------ |
+| 管理后台       | `/admin-api/**`  | RBAC、机器人、设备、任务、AI、运营管理     |
+| Robot / Device | `/device-api/**` | Heartbeat、配置、任务 ACK、事件和结果      |
+| APP / H5       | `/app-api/**`    | 用户登录、机器人绑定、机器人状态与用户操作 |
+
+三种 API 使用不同身份认证和授权边界，Token 不可互换。
+
+# 🚀 核心能力
+
+## 🤖 机器人运营
+
+提供机器人从设备入库、激活、上线到运营管理的完整基础能力。
+
+主要包括：
+
+- Product 产品管理
+- Device Inventory 设备库存
+- 机器人激活
+- 设备凭证管理
+- 机器人在线 / 离线状态
+- 电量、版本等状态信息
+- 机器人详情
+- 用户与机器人绑定
+- 多租户机器人隔离
+- 机器人配额管理
+- 机器人运营 Dashboard
+
+## 📡 设备与 MQTT
+
+平台内置 EMQX 集成，通过 MQTT 实现机器人与云端之间的实时通信。
+
+支持：
+
+- 设备身份认证
+- MQTT 设备连接
+- Heartbeat 心跳
+- 在线状态维护
+- 状态上报
+- 云端指令下发
+- ACK
+- 任务执行事件
+- 任务结果回传
+- 消息幂等
+- 租户隔离
+- Redis 实时状态投影
+
+机器人可以使用：
+
+```
+Robot
+  │
+  ├── Heartbeat
+  ├── Telemetry
+  ├── Mission ACK
+  ├── Mission Event
+  └── Mission Result
+  │
+ MQTT
+  │
+  ▼
+RuoYi Robot Cloud
 ```
 
-Compose 首次启动会按顺序导入 `sql/mysql/ruoyi-vue-pro.sql`、`sql/mysql/quartz.sql` 和
-`sql/mysql/robot-platform.sql` 到 `robot_platform`。若需要重新初始化本地数据，先停止 Compose，
-再明确删除这一个项目的 Docker volumes 后重新启动；不要对共享数据库执行该操作。后端默认监听
-`http://127.0.0.1:48080`，EMQX Dashboard 默认在 `http://127.0.0.1:18083`。
+完成机器人和云平台之间的双向通信。
 
-管理后台数据库种子包含租户 1 的 `admin` 用户，初始密码为 `123456`。仅供首次本地登录；首次进入
-后立即修改密码，并为实际租户创建独立管理员，切勿在生产环境保留此账号或密码。
+## 📋 机器人任务
 
-### 启动管理后台
+平台提供统一机器人任务模型，可用于：
 
-```bash
+- 移动
+- 导航
+- 做家务
+- 巡检
+- 拍照
+- 视频
+- 找人
+- 找物
+- 回充
+- 自定义机器人技能
+
+典型任务链路：
+
+```
+创建任务
+   ↓
+云端下发
+   ↓
+MQTT
+   ↓
+机器人 ACK
+   ↓
+机器人执行
+   ↓
+执行事件
+   ↓
+任务结果
+   ↓
+云端持久化
+```
+
+为后续 Robot Agent 自动调用机器人能力提供统一任务基础。
+
+# 🧠 AI 大模型与 Robot Agent
+
+RuoYi Robot 不仅是机器人设备管理平台，同时提供 AI Agent 基础能力。
+
+平台支持统一管理：
+
+- AI 服务商
+- 大模型
+- Prompt
+- Agent
+- Robot ↔ Agent 绑定
+- AI 对话
+- Realtime Agent
+- 长期记忆
+- 知识库
+- 数字人
+- TTS
+
+机器人可以绑定不同 Agent，从传统的：
+
+```
+用户 → APP → API → 机器人任务
+```
+
+逐渐演进为：
+
+```
+用户
+ │
+ ▼
+AI Agent
+ │
+ ├── LLM
+ ├── Knowledge Base
+ ├── Memory
+ ├── Tools
+ └── Robot Skills
+        │
+        ▼
+     Mission
+        │
+       MQTT
+        │
+        ▼
+      Robot
+```
+
+
+
+从而让机器人从“接受固定指令”升级为“理解任务并执行任务”。
+
+# 📚 知识库
+
+平台已经提供知识库和纯文本知识文档管理基础能力，可与 Agent 建立关联。
+
+规划中的完整 RAG 链路：
+
+```
+PDF / Word / Markdown / TXT
+            ↓
+        文档解析
+            ↓
+          Chunk
+            ↓
+        Embedding
+            ↓
+       Vector Store
+            ↓
+         Retrieval
+            ↓
+           LLM
+            ↓
+          Agent
+```
+
+> 当前版本已经支持知识库和纯文本知识文档管理；文件上传解析、Embedding、向量数据库和语义检索仍在持续建设中。
+
+# 🎭 Digital Human
+
+RuoYi Robot 提供建立在 **Realtime Agent** 之上的数字人能力。
+
+数字人可以配置：
+
+- 数字人形象
+- Agent
+- TTS 模型 / 音色
+- 欢迎语
+- 打断策略
+- 口型策略
+- 状态动作
+
+当前 V1 支持：
+
+```
+STATIC_2D
+```
+
+并预留：
+
+```
+Live2D
+3D Avatar
+Third-party Renderer
+```
+
+统一 Renderer 接口。
+
+整体链路：
+
+```
+Microphone
+    ↓
+Realtime Agent
+    ↓
+   LLM
+    ↓
+   TTS
+    ↓
+Digital Human Renderer
+    ↓
+Avatar + Voice + Lip Sync
+```
+
+
+
+# 🧱 技术栈
+
+## Backend
+
+| 技术           | 用途                   |
+| -------------- | ---------------------- |
+| Java 17        | 后端开发语言           |
+| Spring Boot    | 应用框架               |
+| RuoYi-Vue-Pro  | 基础后台框架           |
+| Maven          | Java 工程管理          |
+| MySQL 8.4      | 业务数据               |
+| Redis 7        | 缓存、实时机器人状态   |
+| EMQX 5.8       | MQTT Broker            |
+| MQTT           | Robot ↔ Cloud 实时通信 |
+| Docker Compose | 本地基础设施部署       |
+
+后端采用 **Modular Monolith（模块化单体）** 架构，主要模块使用：
+
+```
+robot-platform-*
+```
+
+Java package：
+
+```
+com.robot.platform
+```
+
+## Frontend
+
+| 技术       | 用途         |
+| ---------- | ------------ |
+| Vue 3      | 管理后台     |
+| TypeScript | 前端开发语言 |
+| Vite       | 构建工具     |
+| pnpm       | 包管理       |
+
+管理后台：
+
+```
+robot-platform-ui-admin
+```
+
+## AI
+
+AI 层主要围绕：
+
+```
+LLM Provider
+      ↓
+Model
+      ↓
+Prompt
+      ↓
+Agent
+      ↓
+Knowledge / Memory / Tools
+      ↓
+Robot Skill
+```
+
+设计。
+
+可用于接入不同的大模型服务和机器人能力。
+
+# 📦 项目结构
+
+```
+ruoyi-robot
+│
+├── robot-platform-server
+│
+├── robot-platform-framework
+│
+├── robot-platform-dependencies
+│
+├── robot-platform-module-system
+│
+├── robot-platform-module-infra
+│
+├── robot-platform-module-tenant
+│
+├── robot-platform-module-member
+│
+├── robot-platform-module-device
+│
+├── robot-platform-module-robot
+│
+├── robot-platform-ui-admin
+│
+├── robot-simulator
+│
+├── docker
+│
+├── scripts
+│
+├── sql
+│
+└── docs
+```
+
+# 🖼️ 功能演示
+
+> 建议将截图统一放到 `docs/images/`。
+
+## Dashboard
+
+
+
+机器人数量、在线状态、任务趋势等运营数据。
+
+![image-20260928131620448](./docs/images/image-20260928131620448.png)
+
+
+
+# 🚀 Quick Start
+
+## 环境要求
+
+建议：
+
+```
+JDK       17+
+Maven     3.9+
+Docker    Docker Compose v2
+MySQL     8.4
+Redis     7
+EMQX      5.8
+Node.js   20.19+ / 22.12+
+pnpm      9+
+```
+
+## 1. Clone
+
+```
+git clone https://github.com/longscoop/ruoyi-robot.git
+cd ruoyi-robot
+```
+
+## 2. 配置环境变量
+
+在项目根目录创建：
+
+```
+.env
+```
+
+至少配置：
+
+```
+MYSQL_PASSWORD
+MYSQL_ROOT_PASSWORD
+
+EMQX_NODE_COOKIE
+EMQX_DASHBOARD_PASSWORD
+
+MQTT_CALLBACK_TOKEN
+MQTT_CLOUD_USERNAME
+MQTT_CLOUD_PASSWORD
+
+ROBOT_SECRET_MASTER_KEY
+ROBOT_AI_SECRET_KEY_BASE64
+```
+
+设备凭证和 AI 凭证分别使用独立 32 字节随机密钥，例如：
+
+```
+openssl rand -base64 32
+```
+
+> 首次配置后请妥善保存密钥，不要随意更换，也不要将 `.env`、设备 Secret、MQTT Secret 或 AI Provider Secret 提交到 Git。
+
+## 3. 启动基础设施
+
+```
+docker compose up -d --wait mysql redis emqx
+```
+
+默认启动：
+
+```
+MySQL
+Redis
+EMQX
+```
+
+EMQX Dashboard：
+
+```
+http://127.0.0.1:18083
+```
+
+## 4. 启动 Backend
+
+```
+set -a
+source .env
+set +a
+
+mvn -pl robot-platform-server -am -DskipTests package
+
+java -jar robot-platform-server/target/robot-platform-server.jar \
+  --spring.profiles.active=local
+```
+
+默认地址：
+
+```
+http://127.0.0.1:48080
+```
+
+首次启动时 Docker Compose 会初始化：
+
+```
+sql/mysql/ruoyi-vue-pro.sql
+sql/mysql/quartz.sql
+sql/mysql/robot-platform.sql
+```
+
+## 5. 启动管理后台
+
+```
 cd robot-platform-ui-admin
+
 pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-浏览器访问终端输出的本地地址（通常为 `http://127.0.0.1:5173`）。管理端的仪表盘调用
-`GET /admin-api/robot/dashboard`，只汇总当前登录租户的数据：机器人、任务趋势使用 MySQL 的持久数据，
-在线状态读取 Redis 实时投影；告警功能未接入时会明确显示“告警功能未启用”，不会显示虚构告警数。
+默认：
 
-### 首次租户与机器人操作
+```
+http://localhost:80
+```
 
-1. 以平台管理员创建租户和租户管理员；以租户管理员登录后，进入“机器人运营”。
-2. 创建 Product，按产品录入 Device Inventory；库存创建和编辑仅允许 `super_admin` 且需要相应权限。
-3. 激活设备以生成一次性设备凭证。只在受控设备安装流程中展示和保存凭证，绝不复制到工单、日志或前端配置。
-4. 使用设备凭证启动 `robot-simulator`，向 EMQX 发送上线 heartbeat；管理端和 APP 端将从各自的受众接口看到状态。
-5. 在管理端创建任务并观察 ACK、执行事件和结果。设备重复发送同一消息必须保持幂等；跨租户访问同一机器人应被拒绝。
+## 6. 登录
 
-三个 API 受众使用不同认证和授权边界，不能互换 token：
+本地开发环境默认管理员：
 
-| 受众 | 前缀 | 身份与用途 |
-| --- | --- | --- |
-| 管理端 | `/admin-api/**` | 管理员 RBAC，例如租户内机器人、任务和仪表盘 |
-| 设备 | `/device-api/**` | 设备认证，例如 heartbeat、设备配置、任务 ACK/事件回传 |
-| APP/H5 | `/app-api/**` | 会员会话与机器人绑定授权，例如个人机器人状态 |
+```
+Tenant:   RuoYi Robot
+Username: admin
+Password: admin123
+```
 
-### MQTT 与排障
+> 该账号仅用于本地首次启动。生产环境必须修改默认密码并创建独立管理员。
 
-后端本地 profile 从环境变量读取 MySQL、Redis 和 MQTT 配置。修改 `.env` 后重启依赖和后端。设备上线失败时，依次检查：
+# 🤖 接入第一台机器人
 
-1. `docker compose ps` 中 mysql、redis、emqx 均为 healthy；`docker compose logs emqx` 不应出现认证拒绝。
-2. 设备的 product/device 绑定、激活状态和 MQTT 用户名/secret 与当前租户一致；不要在日志中打印 secret。
-3. Redis 可用且 heartbeat 的 MQTT topic、签名时间戳和 nonce 符合 [MQTT boundary](docs/mqtt-boundary.md)。
-4. MySQL `robot`、`robot_mission` 仅以租户条件查询；线上数来自 Redis 投影，Redis 故障时读取持久快照。
+推荐流程：
 
-可运行以下真实 broker 闭环验证。脚本不会输出凭证；它要求 `.env` 中的 Compose/MQTT 变量，并在设置
-`RUN_CORE_PLATFORM_API_E2E=true` 后额外验证一个已创建的 API 测试夹具。
+```
+创建 Tenant
+     ↓
+创建 Product
+     ↓
+创建设备
+     ↓
+激活 Device
+     ↓
+获取 Device Credential
+     ↓
+Robot 连接 MQTT
+     ↓
+发送 Heartbeat
+     ↓
+Robot Online
+     ↓
+Cloud 创建 Mission
+     ↓
+Robot ACK
+     ↓
+Robot Execute
+     ↓
+Result
+```
 
-```bash
-set -a; source .env; set +a
+可以先使用项目自带：
+
+```
+robot-simulator
+```
+
+模拟真实机器人完成整个 MQTT 链路。
+
+# 🧪 E2E 验证
+
+项目提供真实 MQTT Broker 闭环验证：
+
+```
+set -a
+source .env
+set +a
+
 scripts/e2e/core-platform.sh
 ```
 
-## 验证状态
+验证：
 
-后端仪表盘单测和真实 Docker/Testcontainers EMQX + Paho 任务闭环是发布前必跑项。管理前端代码可通过已安装依赖的
-类型检查与单测验证；但当前仓库存在已知的 Task13 pnpm 锁文件/registry 阻塞：锁文件尚未纳入新增前端测试依赖，且该环境
-使用 Node 20.12 与 Vite 8 的 Node 要求不兼容，同时 pnpm 对 registry metadata 请求失败。因此在可由 Node 20.19+ 和正常
-registry 访问的环境执行 `pnpm install --frozen-lockfile` 前，不能宣称整仓发布验证全绿。此问题已按用户决定暂缓，Task14
-没有修改任何 UI 依赖或锁文件。
+```
+Device
+  ↓
+EMQX
+  ↓
+Cloud
+  ↓
+Mission
+  ↓
+ACK
+  ↓
+Event
+  ↓
+Result
+```
 
-## Upstream attribution
+整个核心链路。
 
-This project imports MIT-licensed backend and Vue 3 admin foundations. The pinned revisions, renamed source locations, and instructions for retrieving the original provenance record are in [UPSTREAM.md](UPSTREAM.md).
+# 🗺️ Roadmap
 
-The upstream MIT [LICENSE](LICENSE) is preserved.
+RuoYi Robot 将继续围绕 **Robot Cloud + Robot Agent** 演进。
 
+计划包括：
 
-## Digital Human
+- Robot Python SDK
+- ROS1 SDK / Bridge
+- ROS2 SDK / Bridge
+- OTA
+- Robot Log Center
+- Remote Diagnostics
+- Remote Control
+- Map Management
+- Robot Skill / Capability
+- Agent Tool Calling
+- Robot Workflow
+- 完整 RAG
+- Vector Database
+- Long-term Memory
+- Realtime Voice Agent
+- Live2D Digital Human
+- 3D Digital Human
+- WebRTC Video
+- APP / H5 Robot Console
 
-数字人能力建立在 Realtime Agent 之上：租户可配置数字人形象、Agent、TTS 音色、口型策略、欢迎语、打断和状态动作；设备仍通过 `/device-api/ai/realtime` 使用统一流式协议。V1 提供 STATIC_2D 管理与预览，并为 Live2D/3D renderer 保留供应商无关接口。
+最终希望形成：
 
-设计：`docs/superpowers/specs/2026-09-20-digital-human-design.md`
-实施计划：`docs/superpowers/plans/2026-09-20-digital-human.md`
-端侧协议：`docs/digital-human-renderer-protocol.md`
+```
+              RuoYi Robot
 
-验证说明：数字人新增了 schema/service/admin/realtime/UI/permission/E2E contract tests。当前 GitHub 分支未配置可由本连接器触发的 CI run，因此提交记录不把 Maven/Vitest/E2E 标记为已执行；合并前应在标准开发/CI 环境执行 `robot-platform-module-ai` 测试、管理端 type-check/test 和 mock-provider realtime E2E。
+       Robot Cloud Platform
+                +
+          Robot AI Agent
+                +
+      Robot Developer Platform
+```

@@ -30,6 +30,12 @@ robot-platform:
     enable: false
   demo: false
 
+robot:
+  security:
+    secret-master-key: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+  ai:
+    secret-key-base64: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+
 justauth:
   enabled: false
 

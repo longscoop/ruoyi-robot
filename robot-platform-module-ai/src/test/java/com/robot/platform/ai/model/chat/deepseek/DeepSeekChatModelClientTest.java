@@ -4,6 +4,7 @@ import com.robot.platform.ai.model.client.*;
 import com.robot.platform.ai.model.client.event.ProviderEvent;
 import com.robot.platform.framework.common.util.json.JsonUtils;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 import java.io.ByteArrayInputStream;
 import java.net.URI;
@@ -16,6 +17,15 @@ import java.util.concurrent.CompletableFuture;
 import static org.junit.jupiter.api.Assertions.*;
 
 class DeepSeekChatModelClientTest {
+
+    @Test
+    void springCreatesClientWithDecoder() {
+        try (var context = new AnnotationConfigApplicationContext()) {
+            context.register(DeepSeekSseDecoder.class, DeepSeekChatModelClient.class);
+            context.refresh();
+            assertEquals("DEEPSEEK", context.getBean(DeepSeekChatModelClient.class).providerType());
+        }
+    }
 
     @Test
     void postsStreamingChatRequestAndPreservesCancelableHandle() {

@@ -91,7 +91,12 @@ const isPlatformAdmin = computed(() => canMaintainInventory(user.getRoles))
 const load = async () => {
   loading.value = true
   try {
-    devices.value = await DeviceApi.list()
+    if (isPlatformAdmin.value) {
+      const [inventory, mine] = await Promise.all([DeviceApi.inventory(), DeviceApi.list()])
+      devices.value = [...inventory, ...mine].sort((a, b) => (b.id ?? 0) - (a.id ?? 0))
+    } else {
+      devices.value = await DeviceApi.list()
+    }
   } finally {
     loading.value = false
   }

@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -20,21 +21,24 @@ class AsyncMemoryPipelineTest {
         CountDownLatch release = new CountDownLatch(1);
         MemoryExtractor extractor = (turn, identity, directive) -> {
             entered.countDown();
-            try { release.await(2, TimeUnit.SECONDS); }
+            try { release.await(10, TimeUnit.SECONDS); }
             catch (InterruptedException e) { Thread.currentThread().interrupt(); }
             return List.of();
         };
         AsyncMemoryPipeline pipeline = new AsyncMemoryPipeline(extractor, new MemoryDirectiveParser(), 1, 4);
+        AiAgentConfig agent = mock(AiAgentConfig.class);
+        var caller = Executors.newSingleThreadExecutor();
         try {
-            long started = System.nanoTime();
-            pipeline.submit(new MemoryExtractor.CompletedTurn("记住我喜欢咖啡", "好的"),
-                    new ConversationIdentity(1L, 2L, 3L, "VOICEPRINT", .9, true),
-                    mock(AiAgentConfig.class));
-            long elapsedMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started);
-            assertTrue(elapsedMillis < 200, "submit must be non-blocking");
-            assertTrue(entered.await(1, TimeUnit.SECONDS));
+            var submission = caller.submit(() -> pipeline.submit(
+                    new MemoryExtractor.CompletedTurn("记住我喜欢咖啡", "好的"),
+                    new ConversationIdentity(1L, 2L, 3L, "VOICEPRINT", .9, true), agent));
+            assertTrue(entered.await(5, TimeUnit.SECONDS));
+            assertDoesNotThrow(() -> submission.get(3, TimeUnit.SECONDS),
+                    "submit must return while the extractor is blocked");
+            assertEquals(1L, release.getCount());
         } finally {
             release.countDown();
+            caller.shutdownNow();
             pipeline.destroy();
         }
     }

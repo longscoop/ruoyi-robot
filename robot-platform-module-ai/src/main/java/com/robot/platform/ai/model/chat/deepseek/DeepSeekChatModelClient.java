@@ -9,6 +9,7 @@ import com.robot.platform.ai.model.client.ChatStream;
 import com.robot.platform.ai.model.client.ResolvedModel;
 import com.robot.platform.ai.model.client.event.ProviderEvent;
 import com.robot.platform.framework.common.util.json.JsonUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.io.BufferedReader;
@@ -35,6 +36,7 @@ public class DeepSeekChatModelClient implements ChatModelClient {
     private final Transport transport;
     private final Executor executor;
 
+    @Autowired
     public DeepSeekChatModelClient(DeepSeekSseDecoder decoder) {
         this(decoder, new JdkTransport(HttpClient.newHttpClient()), ForkJoinPool.commonPool());
     }
