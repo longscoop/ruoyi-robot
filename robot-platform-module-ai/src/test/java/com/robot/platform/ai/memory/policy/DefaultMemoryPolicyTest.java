@@ -66,6 +66,16 @@ class DefaultMemoryPolicyTest {
                 MemoryDirectiveParser.Directive.FORGET, List.of()).action());
     }
 
+    @Test void sameFactChangingCategoryRefreshesRatherThanDuplicating() {
+        AiMemoryDO existing = new AiMemoryDO();
+        existing.setId(7L); existing.setScope("ROBOT"); existing.setMemoryType("FACT");
+        existing.setContent("用户有猫，叫小黑。"); existing.setStatus("ACTIVE");
+        assertEquals(MemoryDecision.Action.REPLACE, decide(candidate("ROBOT", "RELATION", "用户有猫叫小黑", .9,.95,null),
+                anonymous, MemoryDirectiveParser.Directive.NORMAL, List.of(existing)).action());
+        assertEquals(MemoryDecision.Action.IGNORE, decide(candidate("ROBOT", "UNKNOWN", "其他内容", .9,.95,null),
+                anonymous, MemoryDirectiveParser.Directive.NORMAL, List.of()).action());
+    }
+
     private MemoryDecision decide(MemoryCandidate c, ConversationIdentity i,
                                   MemoryDirectiveParser.Directive d, List<AiMemoryDO> existing) {
         return policy.decide(c, i, d, existing);

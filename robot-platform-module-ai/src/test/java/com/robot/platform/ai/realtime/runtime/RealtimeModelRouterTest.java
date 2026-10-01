@@ -84,6 +84,13 @@ class RealtimeModelRouterTest {
                 () -> router.route(agent("AUTO"), capabilities(false, false, false, false, false)));
     }
 
+    @Test void autoUsesCascadeForPerQuestionMemoryRecall() {
+        var config=new AiAgentConfig(101,11,"a","role",1,1,"AUTO",301L,302L,303L,304L,"MEM_LOCAL_SHORT",true,true);
+        var route=router.route(config,RealtimeModelRouter.ModelCapabilities.configured(config));
+        assertEquals(RealtimeRoute.Mode.CASCADE,route.mode());
+        assertEquals("AUTO_MEMORY_RECALL",route.routeReason());
+    }
+
     private static RealtimeModelRouter.ModelCapabilities capabilities(
             boolean nativeSupported, boolean cascadeSupported, boolean nativeToolCallingSupported,
             boolean chatOnlyRequired, boolean toolPathRequired) {

@@ -20,6 +20,7 @@ import java.util.concurrent.ConcurrentMap;
 @Component
 public class RealtimeAgentRuntimeManager implements AiRealtimeWebSocketHandler.RuntimeManager {
 
+    private final com.robot.platform.ai.realtime.service.RealtimeTraceService traceService;
     private final AiAgentRobotBindingService bindingService;
     private final AiAgentService agentService;
     private final RealtimeModelRouter router;
@@ -30,7 +31,6 @@ public class RealtimeAgentRuntimeManager implements AiRealtimeWebSocketHandler.R
     private final MemoryContextBuilder memoryContextBuilder;
     private final DigitalHumanSessionResolver digitalHumanResolver;
     private final ConcurrentMap<String, RealtimeAgentRuntime> runtimes = new ConcurrentHashMap<>();
-
     @Autowired
     private com.robot.platform.ai.digitalhuman.provider.DigitalHumanProviders renderProviders;
 
@@ -43,7 +43,9 @@ public class RealtimeAgentRuntimeManager implements AiRealtimeWebSocketHandler.R
                                        ConversationIdentityResolver identityResolver,
                                        @Nullable MemoryPipeline memoryPipeline,
                                        MemoryContextBuilder memoryContextBuilder,
-                                       DigitalHumanSessionResolver digitalHumanResolver) {
+                                       DigitalHumanSessionResolver digitalHumanResolver,
+                                       com.robot.platform.ai.realtime.service.RealtimeTraceService traceService) {
+        this.traceService = Objects.requireNonNull(traceService);
         this.bindingService = Objects.requireNonNull(bindingService, "bindingService");
         this.agentService = Objects.requireNonNull(agentService, "agentService");
         this.router = Objects.requireNonNull(router, "router");
@@ -67,6 +69,7 @@ public class RealtimeAgentRuntimeManager implements AiRealtimeWebSocketHandler.R
         this.memoryPipeline = null;
         this.memoryContextBuilder = null;
         this.digitalHumanResolver = null;
+        this.traceService = null;
     }
 
     @Override
@@ -75,6 +78,7 @@ public class RealtimeAgentRuntimeManager implements AiRealtimeWebSocketHandler.R
         RealtimeAgentRuntime runtime = new RealtimeAgentRuntime(
                 webSocketSessionId, deviceSession, bindingService, agentService, router,
                 modelResolver, clientRegistry, identityResolver, memoryPipeline, memoryContextBuilder);
+        if (traceService != null) runtime.attachTraceService(traceService);
         if (digitalHumanResolver != null) runtime.attachDigitalHumanResolver(digitalHumanResolver);
         if (renderProviders != null) runtime.attachRenderProviders(renderProviders);
         RealtimeAgentRuntime existing = runtimes.putIfAbsent(webSocketSessionId, runtime);

@@ -12,6 +12,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 public class LlmMemoryExtractor implements MemoryExtractor {
     public static final String PROMPT_CODE = "MEMORY_EXTRACT";
@@ -34,24 +36,35 @@ public class LlmMemoryExtractor implements MemoryExtractor {
     @Override
     public List<MemoryCandidate> extract(CompletedTurn turn, ConversationIdentity identity,
                                          MemoryDirectiveParser.Directive directive) {
-        if (turn == null || directive == MemoryDirectiveParser.Directive.DO_NOT_REMEMBER
-                || directive == MemoryDirectiveParser.Directive.FORGET) return List.of();
+        if (turn == null || directive == MemoryDirectiveParser.Directive.DO_NOT_REMEMBER) return List.of();
 
-        StringBuilder json = new StringBuilder();
+        StringBuffer json = new StringBuffer();
+        CountDownLatch done = new CountDownLatch(1);
         AtomicBoolean failed = new AtomicBoolean();
         ChatRequest request = new ChatRequest(model, List.of(
                 new ChatRequest.ChatMessage("system", prompt),
-                new ChatRequest.ChatMessage("user", "USER: " + safe(turn.userText())
-                        + "\nASSISTANT: " + safe(turn.assistantText()))));
+                // Assistant output can contain recalled facts or hallucinations; it is not new user evidence.
+                new ChatRequest.ChatMessage("user", "USER: " + safe(turn.userText()))));
         try {
-            chatClient.stream(request, event -> {
+            try (ChatStream stream = chatClient.stream(request, event -> {
                 if (event instanceof ProviderEvent.TextDelta delta) json.append(delta.text());
-                else if (event instanceof ProviderEvent.TextDone done) {
-                    if (json.isEmpty()) json.append(done.text());
-                } else if (event instanceof ProviderEvent.ProviderError) failed.set(true);
-            });
-            if (failed.get() || json.isEmpty()) return List.of();
+                else if (event instanceof ProviderEvent.TextDone textDone
+                        && textDone.text() != null && !textDone.text().isBlank()) {
+                    json.setLength(0);
+                    json.append(textDone.text());
+                }
+                if (event instanceof ProviderEvent.TextDone) done.countDown();
+                if (event instanceof ProviderEvent.ProviderError) { failed.set(true); done.countDown(); }
+            })) {
+                if (!done.await(30, TimeUnit.SECONDS)) throw new IllegalStateException("Memory extraction timed out");
+            }
+            if (failed.get()) throw new IllegalStateException("Memory provider returned an error");
+            if (json.isEmpty()) return List.of();
             return parseStrict(json.toString());
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            errorRecorder.record(exception);
+            return List.of();
         } catch (RuntimeException exception) {
             errorRecorder.record(exception);
             return List.of();

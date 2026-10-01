@@ -38,7 +38,7 @@ export interface Prompt {
   status: RecordStatus
 }
 
-export type PromptInput = Omit<Prompt, 'id' | 'version'>
+export type PromptInput = Omit<Prompt, 'id' | 'version' | 'code'> & { code?: string }
 
 export interface Agent {
   id: number
@@ -51,7 +51,7 @@ export interface Agent {
   asrModelId: number | null
   ttsModelId: number | null
   realtimeMode: 'NATIVE' | 'CASCADE' | 'AUTO'
-  memoryMode: 'NONE' | 'SESSION' | 'LONG_TERM'
+  memoryMode: 'NONE' | 'SESSION' | 'LONG_TERM' | 'NOMEM' | 'MEM_LOCAL_SHORT' | 'MEM0AI' | 'POWERMEM'
   memoryReadEnabled: boolean
   memoryWriteEnabled: boolean
   knowledgeEnabled: boolean
@@ -106,7 +106,9 @@ export const ModelApi = {
 
 export const PromptApi = {
   list: () => request.get<Prompt[]>({ url: '/ai/prompts' }),
-  create: (data: PromptInput) => request.post<number>({ url: '/ai/prompts', data })
+  create: (data: PromptInput) => request.post<number>({ url: '/ai/prompts', data }),
+  update: (id: number, data: PromptInput) =>
+    request.put<boolean>({ url: `/ai/prompts/${id}`, data })
 }
 
 export const AgentApi = {

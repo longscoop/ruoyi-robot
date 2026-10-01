@@ -37,6 +37,12 @@ public class DefaultMemoryPolicy implements MemoryPolicy {
                     : MemoryDecision.ignore("forget scope not authorized");
         }
         if (candidate == null) return MemoryDecision.ignore("no candidate");
+        try {
+            com.robot.platform.ai.memory.service.MemoryCategories.validate(candidate.memoryType());
+            if (candidate.memoryType() == null) return MemoryDecision.ignore("missing memory category");
+        } catch (IllegalArgumentException invalid) {
+            return MemoryDecision.ignore("unknown memory category");
+        }
         if (!authorized(candidate, identity)) return MemoryDecision.ignore("candidate scope not authorized");
         if (candidate.confidence() < minConfidence) return MemoryDecision.ignore("confidence below threshold");
         if (requiresExpiry(candidate) && candidate.expiresAt() == null) {
@@ -72,7 +78,6 @@ public class DefaultMemoryPolicy implements MemoryPolicy {
         for (AiMemoryDO row : active) {
             if (row == null || row.getId() == null || !"ACTIVE".equalsIgnoreCase(row.getStatus())) continue;
             if (!normalize(candidate.scope()).equals(normalize(row.getScope()))) continue;
-            if (!normalize(candidate.memoryType()).equals(normalize(row.getMemoryType()))) continue;
             String existing = normalizeText(row.getContent());
             if (existing.equals(normalized) || containsNearDuplicate(existing, normalized)) return row;
         }
@@ -104,7 +109,7 @@ public class DefaultMemoryPolicy implements MemoryPolicy {
     }
 
     private static String normalizeText(String value) {
-        return value == null ? "" : value.trim().toLowerCase(Locale.ROOT).replaceAll("\\s+", "");
+        return value == null ? "" : value.trim().toLowerCase(Locale.ROOT).replaceAll("[\\p{P}\\p{Z}\\s]", "");
     }
 
     private static double probability(double value, String label) {

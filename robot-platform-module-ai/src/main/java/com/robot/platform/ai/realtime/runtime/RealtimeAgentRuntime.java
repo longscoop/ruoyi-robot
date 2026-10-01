@@ -30,6 +30,8 @@ import com.robot.platform.security.ApiAudience;
 import org.springframework.web.socket.CloseStatus;
 
 import java.nio.ByteBuffer;
+import java.time.LocalDateTime;
+import com.robot.platform.ai.realtime.service.RealtimeTraceService;
 import java.util.Objects;
 import java.util.function.Supplier;
 
@@ -60,6 +62,23 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
     private final MemoryPipeline memoryPipeline;
     private final MemoryContextBuilder memoryContextBuilder;
 
+    private RealtimeTraceService traceService;
+    private RealtimeTraceService.Trace trace;
+    private LocalDateTime firstAudioAt;
+    private LocalDateTime firstResponseAt;
+    private int interruptCount;
+    private String failureCode;
+    private boolean userRecorded;
+    private boolean assistantRecorded;
+    private boolean responseComplete;
+    private boolean memorySubmitted;
+    private final java.util.List<MemoryExtractor.CompletedTurn> pendingMemoryTurns = new java.util.ArrayList<>();
+
+    public synchronized void attachTraceService(RealtimeTraceService service) {
+        if (state != State.CONNECTING) throw new IllegalStateException("Trace must attach before start");
+        traceService = Objects.requireNonNull(service);
+    }
+
     private State state = State.CONNECTING;
     private AiAgentConfig agentConfig;
     private RealtimeRoute route;
@@ -76,8 +95,6 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
     private String finalizedAssistantText;
     private DigitalHumanSessionResolver digitalHumanResolver;
     private AiDigitalHumanDO digitalHuman;
-
-    private boolean responseComplete;
     private DigitalHumanProviders renderProviders;
     private DigitalHumanAudioStream renderStream;
 
@@ -167,7 +184,13 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
         }
 
         if (event instanceof RealtimeClientEvent.SessionStartEvent sessionStart) {
-            start(sessionStart);
+            try {
+                start(sessionStart);
+            } catch (RuntimeException error) {
+                failureCode = "SESSION_START_FAILED";
+                close(new CloseReason(1011, failureCode));
+                throw error;
+            }
             return;
         }
         if (event instanceof RealtimeClientEvent.DigitalHumanOfferEvent offer) {
@@ -209,6 +232,7 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
         if (pcm == null) {
             throw new IllegalArgumentException("PCM buffer must not be null");
         }
+        if (firstAudioAt == null && pcm.hasRemaining()) firstAudioAt = LocalDateTime.now();
         if (providerSession != null) {
             providerSession.appendAudio(pcm.asReadOnlyBuffer());
         }
@@ -247,12 +271,22 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
         if (state == State.CLOSED) {
             return;
         }
+        flushMemoryTurns();
         closeReason = reason == null ? new CloseReason(1011, "UNKNOWN") : reason;
         state = State.CLOSED;
         if (renderStream != null) { renderStream.close(); renderStream = null; }
-        if (providerSession != null) {
-            providerSession.close();
+        try {
+            if (providerSession != null) providerSession.close();
+        } finally {
             providerSession = null;
+            if (trace != null) {
+                String error = failureCode != null ? failureCode
+                        : (closeReason.code() == 1000 || closeReason.code() == 1001 ? null : "TRANSPORT_CLOSED");
+                withTrustedTenant(() -> {
+                    traceService.finish(trace, error, firstAudioAt, firstResponseAt, interruptCount);
+                    return null;
+                });
+            }
         }
         if (output != null) {
             emitEvent(new RealtimeServerEvent.SessionClosedEvent(sessionId, closeReason.reason()));
@@ -337,6 +371,9 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
                         deviceSession.tenantId(), deviceSession.robotId(), event.identity()));
         audioFormat = event.audio();
         route = router.route(resolved, RealtimeModelRouter.ModelCapabilities.configured(resolved));
+        if (traceService != null) {
+            trace = withTrustedTenant(() -> traceService.start(agentConfig, conversationIdentity, route));
+        }
         if (modelResolver != null && clientRegistry != null) {
             if (route.mode() == RealtimeRoute.Mode.NATIVE) {
                 openNativeProvider();
@@ -366,10 +403,20 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
         if (resolvedModel.modelId() != modelId) {
             throw new IllegalStateException("Resolved model does not match realtime route");
         }
-        String memoryContext = buildMemoryContext("");
-        resolvedModel = resolvedModel.withRealtimeSession(mergeSystemContext(agentConfig.systemPrompt(), memoryContext), digitalHumanVoiceConfig(agentConfig.voiceConfigJson()));
+        // Some native models accept session.updated but retain the initial instructions in inference.
+        // Enable dynamic recall only after the model has passed a live instruction-update check.
+        boolean turnMemory = "QWEN".equals(resolvedModel.providerType()) && agentConfig.voiceConfigJson() != null
+                && JsonUtils.parseTree(agentConfig.voiceConfigJson()).path("input_audio_transcription").isObject()
+                && resolvedModel.modelConfigJson() != null
+                && JsonUtils.parseTree(resolvedModel.modelConfigJson()).path("per_turn_instructions").asBoolean(false);
+        String memoryContext = turnMemory ? buildMemoryContext("") : withTrustedTenant(() ->
+                memoryContextBuilder == null ? "" : memoryContextBuilder.buildBackgroundContext(conversationIdentity, agentConfig));
+        resolvedModel = resolvedModel.withRealtimeSession(mergeSystemContext(agentConfig.systemPrompt(), memoryContext),
+                digitalHumanVoiceConfig(agentConfig.voiceConfigJson()));
         RealtimeVoiceClient client = clientRegistry.requireRealtimeVoice(resolvedModel.providerType());
-        providerSession = client.openTurnAware(resolvedModel, this::onProviderTurnEvent);
+        providerSession = turnMemory ? client.openTurnAware(resolvedModel, this::onProviderTurnEvent,
+                text -> withTrustedTenant(() -> mergeSystemContext(agentConfig.systemPrompt(), buildMemoryContext(text))))
+                : client.openTurnAware(resolvedModel, this::onProviderTurnEvent);
     }
 
     private void openCascadeProvider() {
@@ -422,7 +469,7 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
         assistantAudioStarted = false;
         finalizedUserText = null;
         finalizedAssistantText = null;
-        responseComplete = false;
+        userRecorded = assistantRecorded = responseComplete = memorySubmitted = false;
         state = State.USER_SPEAKING;
         if (providerSession != null) {
             providerSession.beginTurn(activeGeneration.turnId(), activeGeneration.generation());
@@ -439,6 +486,7 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
         if (!firstCancellation) {
             return;
         }
+        interruptCount++;
 
         if (output != null) {
             emitEvent(new RealtimeServerEvent.PlaybackStopEvent(
@@ -471,6 +519,7 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
         }
         if ((turnId == null || turnId.isBlank() || generation <= 0)
                 && event instanceof ProviderEvent.ProviderError value) {
+            failureCode = value.code();
             emitEvent(new RealtimeServerEvent.SessionErrorEvent(
                     sessionId, value.code(), value.message()));
             return;
@@ -507,24 +556,41 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
                 return;
             }
             finalizedUserText = value.text();
+            if (!userRecorded) {
+                recordMessage(turnId, "USER", value.text());
+                userRecorded = true;
+            }
             emitEvent(new RealtimeServerEvent.InputTranscriptDoneEvent(
                     sessionId, turnId, value.text()));
             if (ConversationExitIntent.matches(value.text())) {
                 activeGeneration.cancel();
                 // A fixed acknowledgement is a control response, never a model-generated promise.
                 finalizedAssistantText = "好的，再见。";
+                if (firstResponseAt == null) firstResponseAt = LocalDateTime.now();
+                if (!assistantRecorded) {
+                    recordMessage(turnId, "ASSISTANT", finalizedAssistantText);
+                    assistantRecorded = true;
+                }
                 emitEvent(new RealtimeServerEvent.AssistantTextDoneEvent(sessionId, turnId, finalizedAssistantText));
                 close(new CloseReason(1000, "USER_GOODBYE"));
                 return;
             }
+            submitFinalizedTurn();
         } else if (event instanceof ProviderEvent.TextDelta value) {
             emitEvent(new RealtimeServerEvent.AssistantTextDeltaEvent(
                     sessionId, turnId, value.text()));
         } else if (event instanceof ProviderEvent.TextDone value) {
             finalizedAssistantText = value.text();
+            if (firstResponseAt == null) firstResponseAt = LocalDateTime.now();
+            if (!assistantRecorded) {
+                recordMessage(turnId, "ASSISTANT", value.text());
+                assistantRecorded = true;
+            }
+            submitFinalizedTurn();
             emitEvent(new RealtimeServerEvent.AssistantTextDoneEvent(
                     sessionId, turnId, value.text()));
         } else if (event instanceof ProviderEvent.AudioDelta value) {
+            if (firstResponseAt == null) firstResponseAt = LocalDateTime.now();
             if (!assistantAudioStarted) {
                 emitEvent(new RealtimeServerEvent.AssistantAudioStartedEvent(
                         sessionId, turnId, PROVIDER_OUTPUT_AUDIO));
@@ -534,8 +600,8 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
             else output.sendAudio(value.audio());
         } else if (event instanceof ProviderEvent.AudioDone) {
             if (responseComplete) return;
-            responseComplete = true;
             if (renderStream != null) renderStream.flush();
+            responseComplete = true;
             emitEvent(new RealtimeServerEvent.AssistantAudioDoneEvent(sessionId, turnId));
             emitEvent(new RealtimeServerEvent.AssistantDoneEvent(sessionId, turnId));
             if (state == State.ASSISTANT_RESPONDING) {
@@ -564,6 +630,7 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
                 emitEvent(new RealtimeServerEvent.AssistantDoneEvent(sessionId, turnId));
                 return;
             }
+            failureCode = value.code();
             emitEvent(new RealtimeServerEvent.SessionErrorEvent(
                     sessionId, value.code(), value.message()));
         }
@@ -595,11 +662,36 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
         return base + "\n\n" + voiceRules + (memory == null || memory.isBlank() ? "" : "\n" + memory);
     }
 
+    private void recordMessage(String turn, String role, String text) {
+        if (trace != null) withTrustedTenant(() -> { traceService.message(trace, turn, role, text); return null; });
+    }
+
     private void submitFinalizedTurn() {
-        if (memoryPipeline == null || conversationIdentity == null || agentConfig == null
-                || finalizedUserText == null || finalizedAssistantText == null) return;
-        memoryPipeline.submit(new MemoryExtractor.CompletedTurn(finalizedUserText, finalizedAssistantText),
-                conversationIdentity, agentConfig);
+        if (memorySubmitted || !responseComplete || memoryPipeline == null || conversationIdentity == null
+                || agentConfig == null || !agentConfig.memoryWriteEnabled()
+                || !com.robot.platform.ai.memory.provider.MemoryModes.persistent(agentConfig.memoryMode())
+                || finalizedUserText == null || finalizedUserText.isBlank()
+                || finalizedAssistantText == null || finalizedAssistantText.isBlank()) return;
+        memorySubmitted = true;
+        var turn = new MemoryExtractor.CompletedTurn(finalizedUserText, finalizedAssistantText,
+                        trace == null ? null : trace.conversationId());
+        var directive = new com.robot.platform.ai.memory.policy.MemoryDirectiveParser().parse(finalizedUserText);
+        // Older buffered evidence must be saved before a forget operation, never re-added after it.
+        if (directive == com.robot.platform.ai.memory.policy.MemoryDirectiveParser.Directive.DO_NOT_REMEMBER) return;
+        if (directive == com.robot.platform.ai.memory.policy.MemoryDirectiveParser.Directive.FORGET) flushMemoryTurns();
+        pendingMemoryTurns.add(turn);
+        // Explicit remember/forget requests flush immediately; normal conversation saves in batches.
+        if (pendingMemoryTurns.size() * 2 >= Math.max(2, memoryPipeline.messageThreshold(agentConfig))
+                || directive == com.robot.platform.ai.memory.policy.MemoryDirectiveParser.Directive.REMEMBER
+                || directive == com.robot.platform.ai.memory.policy.MemoryDirectiveParser.Directive.FORGET)
+            flushMemoryTurns();
+    }
+
+    private void flushMemoryTurns() {
+        if (pendingMemoryTurns.isEmpty() || memoryPipeline == null || conversationIdentity == null || agentConfig == null) return;
+        var batch = java.util.List.copyOf(pendingMemoryTurns);
+        pendingMemoryTurns.clear();
+        memoryPipeline.submitBatch(batch, conversationIdentity, agentConfig);
     }
 
     private void emitEvent(RealtimeServerEvent event) {

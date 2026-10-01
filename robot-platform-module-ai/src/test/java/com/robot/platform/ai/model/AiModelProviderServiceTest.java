@@ -140,6 +140,19 @@ class AiModelProviderServiceTest {
 
             verify(modelMapper, never()).insert(any(AiModelDO.class));
         }
+
+        @Test
+        void workflowProvidersOnlyAllowChatModels() {
+            AiModelProviderDO dify = provider(20L, 1L, null);
+            dify.setProviderType("DIFY");
+            when(providerMapper.selectByIdAndTenantId(20L, 1L)).thenReturn(dify);
+            var service = new AiModelServiceImpl(modelMapper, providerMapper);
+
+            assertThrows(ServiceException.class, () -> service.create(new AiModelService.CreateModelCommand(
+                    1L, 20L, "Dify TTS", "tts", "TTS", null, null, "ENABLED")));
+
+            verify(modelMapper, never()).insert(any(AiModelDO.class));
+        }
     }
 
     private static AiModelProviderDO provider(long id, long tenantId, String ciphertext) {

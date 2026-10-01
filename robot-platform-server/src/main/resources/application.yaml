@@ -221,8 +221,7 @@ robot-platform:
 
 debug: false
 
-# Digital-human rendering and AI model transport.
-
+# Pluggable conversation memory; all credentials stay on the server.
 robot:
   ai:
     model-network:
@@ -238,3 +237,22 @@ robot:
           token: ${ROBOT_LIVETALKING_TOKEN:}
           timeout-seconds: 30
       ice-servers: []
+    memory:
+      save-message-threshold: ${ROBOT_MEMORY_SAVE_MESSAGE_THRESHOLD:6}
+      recall-top-k: ${ROBOT_MEMORY_RECALL_TOP_K:3}
+      context-max-chars: ${ROBOT_MEMORY_CONTEXT_MAX_CHARS:1200}
+      query-deadline-millis: ${ROBOT_MEMORY_QUERY_DEADLINE_MILLIS:300}
+      local-directory: ${ROBOT_MEMORY_LOCAL_DIRECTORY:data/ai-memory}
+      local-max-entries: ${ROBOT_MEMORY_LOCAL_MAX_ENTRIES:40}
+      mem0:
+        enabled: ${ROBOT_MEMORY_MEM0_ENABLED:false}
+        base-url: ${ROBOT_MEMORY_MEM0_BASE_URL:https://api.mem0.ai}
+        api-key: ${ROBOT_MEMORY_MEM0_API_KEY:}
+        query-timeout-millis: ${ROBOT_MEMORY_QUERY_TIMEOUT_MILLIS:1200}
+        save-timeout-millis: 30000
+      powermem:
+        enabled: ${ROBOT_MEMORY_POWERMEM_ENABLED:false}
+        base-url: ${ROBOT_MEMORY_POWERMEM_BASE_URL:http://127.0.0.1:8010}
+        api-key: ${POWER_MEM_SERVICE_TOKEN:}
+        query-timeout-millis: ${ROBOT_MEMORY_QUERY_TIMEOUT_MILLIS:1200}
+        save-timeout-millis: 30000

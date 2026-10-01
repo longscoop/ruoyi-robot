@@ -1,0 +1,11 @@
+{
+  "text": "我在，请说。",
+  "provider": "QWEN",
+  "model": "qwen3-omni-flash-realtime",
+  "voice": "Cherry",
+  "sample_rate": 24000,
+  "channels": 1,
+  "format": "PCM_S16LE",
+  "duration_seconds": 1.2,
+  "generated_at": "2026-10-01"
+}

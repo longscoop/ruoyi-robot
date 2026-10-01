@@ -45,4 +45,16 @@ class MemoryContextBuilderTest {
         return new AiAgentConfig(1,1,"a","system",1,1,"CASCADE",1L,null,2L,3L,
                 "LONG_TERM", enabled, true);
     }
+    @Test
+    void nativeBackgroundIncludesCommunicationPreferencesButNeverTopicFacts() {
+        MemoryRetriever retriever = mock(MemoryRetriever.class);
+        when(retriever.retrieveBackground(any(), eq(8))).thenReturn(List.of(
+                new MemorySnippet(1,"ROBOT","RELATION","用户家有一只名叫小黑的猫",null,1),
+                new MemorySnippet(2,"ROBOT","WORK","用户开发机器人",null,1),
+                new MemorySnippet(3,"ROBOT","PREFERENCE","用户希望回答简短",null,1)));
+        String text=new MemoryContextBuilder(retriever,8).buildBackgroundContext(
+                ConversationIdentity.anonymous(11,33),agent(true));
+        assertFalse(text.contains("小黑"));assertFalse(text.contains("开发机器人"));assertTrue(text.contains("回答简短"));
+    }
+
 }

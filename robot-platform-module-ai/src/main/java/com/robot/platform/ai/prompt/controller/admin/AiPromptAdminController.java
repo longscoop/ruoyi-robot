@@ -46,6 +46,15 @@ public class AiPromptAdminController {
         return success(prompt.getId());
     }
 
+    @PutMapping("/{id}")
+    @PreAuthorize("@ss.hasPermission('ai:prompt:update')")
+    public CommonResult<Boolean> update(@PathVariable long id, @Valid @RequestBody PromptCreateReqVO request) {
+        long tenantId = TenantContextHolder.getRequiredTenantId();
+        promptService.update(tenantId, id, new AiPromptService.CreatePromptCommand(
+                tenantId, request.getName(), null, request.getType(), request.getContent(), request.getStatus()));
+        return success(true);
+    }
+
     private static PromptRespVO toResp(AiPromptDO prompt) {
         return new PromptRespVO(prompt.getId(), prompt.getName(), prompt.getCode(), prompt.getType(),
                 prompt.getContent(), prompt.getVersion(), prompt.getStatus());

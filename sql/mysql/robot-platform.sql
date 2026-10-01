@@ -388,7 +388,7 @@ CREATE TABLE IF NOT EXISTS `ai_model_provider` (
   `tenant_id` bigint NOT NULL COMMENT '租户编号',
   `name` varchar(128) NOT NULL COMMENT 'Provider 名称',
   `code` varchar(64) NOT NULL COMMENT 'Provider 编码',
-  `provider_type` varchar(32) NOT NULL COMMENT 'QWEN/DEEPSEEK/DOUBAO',
+  `provider_type` varchar(32) NOT NULL COMMENT 'QWEN/DEEPSEEK/DOUBAO/COZE/DIFY/FASTGPT',
   `base_url` varchar(512) NOT NULL COMMENT 'Provider 基础地址',
   `api_key_ciphertext` varchar(2048) DEFAULT NULL COMMENT 'Provider API Key 密文',
   `config_json` json DEFAULT NULL COMMENT 'Provider 高级配置',
@@ -453,7 +453,7 @@ CREATE TABLE IF NOT EXISTS `ai_agent` (
   `asr_model_id` bigint DEFAULT NULL COMMENT 'ASR 模型编号',
   `tts_model_id` bigint DEFAULT NULL COMMENT 'TTS 模型编号',
   `realtime_mode` varchar(16) NOT NULL COMMENT 'NATIVE/CASCADE/AUTO',
-  `memory_mode` varchar(16) NOT NULL DEFAULT 'NONE' COMMENT 'NONE/SESSION/LONG_TERM',
+  `memory_mode` varchar(16) NOT NULL DEFAULT 'NONE' COMMENT 'NONE/SESSION/LONG_TERM/NOMEM/MEM_LOCAL_SHORT/MEM0AI/POWERMEM',
   `memory_read_enabled` bit(1) NOT NULL DEFAULT b'0' COMMENT '是否读取长期记忆',
   `memory_write_enabled` bit(1) NOT NULL DEFAULT b'0' COMMENT '是否写入长期记忆',
   `knowledge_enabled` bit(1) NOT NULL DEFAULT b'0' COMMENT '是否启用知识能力',
@@ -709,3 +709,19 @@ UPDATE system_menu SET parent_id = 791, sort = CASE id
   WHEN 920040 THEN 3 WHEN 920050 THEN 4 WHEN 920060 THEN 5 WHEN 920070 THEN 6 END,
   visible = b'1'
 WHERE id IN (920040, 920050, 920060, 920070);
+-- Merge connection diagnostics into conversations; preserve existing IDs and URLs.
+UPDATE system_menu SET visible=b'0' WHERE id=920060;
+UPDATE system_menu SET name='角色查询' WHERE id=910205;
+UPDATE system_menu SET name='角色新增' WHERE id IN (910206,920111);
+UPDATE system_menu SET name='角色' WHERE id=920020;
+INSERT INTO system_menu (id,name,permission,type,sort,parent_id,path,icon,component,component_name,status,visible,keep_alive,always_show,creator,create_time,updater,update_time,deleted)
+SELECT 910223,'角色修改','ai:prompt:update',3,15,910200,'','','',NULL,0,b'1',b'0',b'0','admin',NOW(),'admin',NOW(),b'0'
+WHERE NOT EXISTS (SELECT 1 FROM system_menu WHERE id=910223);
+INSERT INTO system_role_menu (role_id,menu_id,tenant_id,creator,create_time,updater,update_time,deleted)
+SELECT DISTINCT r.role_id,910223,r.tenant_id,'admin',NOW(),'admin',NOW(),b'0'
+FROM system_role_menu r WHERE r.menu_id IN (910206,920111) AND r.deleted=0
+AND NOT EXISTS (SELECT 1 FROM system_role_menu e WHERE e.role_id=r.role_id AND e.menu_id=910223 AND e.tenant_id=r.tenant_id AND e.deleted=0);
+INSERT INTO system_role_menu (role_id,menu_id,tenant_id,creator,create_time,updater,update_time,deleted)
+SELECT DISTINCT r.role_id,920040,r.tenant_id,'admin',NOW(),'admin',NOW(),b'0'
+FROM system_role_menu r WHERE r.menu_id=920060 AND r.deleted=0
+AND NOT EXISTS (SELECT 1 FROM system_role_menu e WHERE e.role_id=r.role_id AND e.menu_id=920040 AND e.tenant_id=r.tenant_id AND e.deleted=0);

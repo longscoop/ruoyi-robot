@@ -23,13 +23,13 @@ public interface AiMemoryMapper extends BaseMapperX<AiMemoryDO> {
     @Update("""
             UPDATE ai_memory
             SET content = #{content}, summary = #{summary}, importance = #{importance},
-                expires_at = #{expiresAt}, updated_at = NOW(3)
+                expires_at = #{expiresAt}, memory_type = COALESCE(#{memoryType}, memory_type), updated_at = NOW(3)
             WHERE id = #{id} AND tenant_id = #{tenantId} AND status = 'ACTIVE'
             """)
     int updateActiveByTenantId(@Param("id") long id, @Param("tenantId") long tenantId,
                                @Param("content") String content, @Param("summary") String summary,
                                @Param("importance") java.math.BigDecimal importance,
-                               @Param("expiresAt") LocalDateTime expiresAt);
+                               @Param("expiresAt") LocalDateTime expiresAt, @Param("memoryType") String memoryType);
 
     @TenantIgnore
     @Update("""

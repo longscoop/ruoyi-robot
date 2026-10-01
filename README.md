@@ -158,6 +158,10 @@ RuoYi Robot 不仅是机器人设备管理平台，同时提供 AI Agent 基础�
 - 数字人
 - TTS
 
+`CHAT` 模型可接入 Coze、Dify、FastGPT 和通义千问。AI 工作流通过云平台受保护的任务接口操作机器人。
+
+小智 ESP32-S3 可通过独立协议适配器接入现有 Realtime Agent，进行麦克风输入和扬声器回复测试，适配器位于 `script/xiaozhi-bridge/`，以 `config.example.json` 为模板配置设备身份及服务地址。
+
 机器人可以绑定不同 Agent，从传统的：
 
 ```
@@ -238,7 +242,7 @@ STATIC_2D
 LIVETALKING（WebRTC 实时音视频）
 ```
 
-LiveTalking 支持选择服务实例和形象，实时回答音频驱动口型，支持打断。可通过不同实例切换 Wav2Lip、MuseTalk 等模型。管理端可连接视频并试听，部署、接口和联调步骤见 [LiveTalking 数字人接入](docs/digital-human-livetalking.md)。旧配置默认使用静态形象，无需数据库迁移。
+LiveTalking 支持选择服务实例和形象，实时回答音频驱动口型，支持打断。可通过不同实例切换 Wav2Lip、MuseTalk 等模型。管理端可连接视频并试听；服务端通过 `ROBOT_LIVETALKING_ENABLED`、`ROBOT_LIVETALKING_BASE_URL` 和 `ROBOT_LIVETALKING_TOKEN` 配置服务，管理端选择对应服务实例和形象 ID。旧配置默认使用静态形象，无需数据库迁移。
 
 并预留：
 
@@ -621,3 +625,7 @@ RuoYi Robot 将继续围绕 **Robot Cloud + Robot Agent** 演进。
                 +
       Robot Developer Platform
 ```
+
+对话记忆支持本地摘要、Mem0、PowerMem 和关闭模式，可在智能体配置中切换。服务端配置位于 `application.yaml` 的 `robot.ai.memory`，远程服务凭据通过环境变量提供；PowerMem 适配服务启动说明见 [README](script/powermem-service/README.md)。
+
+已有数据库升级时，执行 `sql/mysql/ai-admin-display-20261001.sql` 更新角色修改权限及对话菜单；新环境使用 `sql/mysql/robot-platform.sql` 初始化。

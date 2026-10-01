@@ -2,7 +2,7 @@
   <ContentWrap>
     <el-tabs v-model="activeTab" @tab-change="loadActive">
       <el-tab-pane v-if="can('ai:agent:query')" label="智能体" name="agents" />
-      <el-tab-pane v-if="can('ai:prompt:query')" label="系统提示词" name="prompts" />
+      <el-tab-pane v-if="can('ai:prompt:query')" label="角色" name="prompts" />
       <el-tab-pane v-if="can('ai:model:query')" label="模型" name="models" />
       <el-tab-pane v-if="can('ai:provider:query')" label="服务商" name="providers" />
     </el-tabs>
@@ -25,7 +25,7 @@
       <el-table-column label="语音模式" min-width="100"
         ><template #default="{ row }">{{ modeLabel(row.realtimeMode) }}</template></el-table-column
       >
-      <el-table-column label="系统提示词" min-width="150"
+      <el-table-column label="角色" min-width="150"
         ><template #default="{ row }">{{
           promptName(row.systemPromptId)
         }}</template></el-table-column
@@ -57,18 +57,22 @@
       v-loading="loading"
       :data="prompts"
       stripe
-      empty-text="暂无提示词"
+      empty-text="暂无角色"
     >
       <el-table-column label="名称" prop="name" min-width="160" />
-      <el-table-column label="编码" prop="code" min-width="150" />
-      <el-table-column label="类型" prop="type" width="130" />
+
+      <el-table-column label="用途" width="130"
+        ><template #default="{ row }">{{ promptTypeName(row.type) }}</template></el-table-column
+      >
       <el-table-column label="版本" prop="version" width="80" />
       <el-table-column label="状态" width="100"
         ><template #default="{ row }">{{ statusLabel(row.status) }}</template></el-table-column
       >
-      <el-table-column label="操作" width="90"
+      <el-table-column label="操作" width="130"
         ><template #default="{ row }"
-          ><el-button link type="primary" @click="showPrompt(row)">查看</el-button></template
+          ><el-button v-if="can('ai:prompt:update')" link type="primary" @click="openEdit(row)"
+            >编辑</el-button
+          ><el-button v-else link type="primary" @click="showPrompt(row)">查看</el-button></template
         ></el-table-column
       >
     </el-table>
@@ -141,19 +145,20 @@
       <el-form-item label="名称" required
         ><el-input v-model="form.name" maxlength="128"
       /></el-form-item>
-      <el-form-item label="编码" required
-        ><el-input
-          v-model="form.code"
-          maxlength="64"
-          :disabled="activeTab === 'prompts' && !!editingId"
+      <el-form-item v-if="activeTab === 'agents' || activeTab === 'providers'" label="编码" required
+        ><el-input v-model="form.code" maxlength="64"
       /></el-form-item>
 
       <template v-if="activeTab === 'providers'">
         <el-form-item label="服务商类型" required
           ><el-select v-model="form.providerType" class="w-full"
-            ><el-option label="通义千问" value="QWEN" /><el-option
-              label="DeepSeek"
-              value="DEEPSEEK" /><el-option label="豆包" value="DOUBAO" /></el-select
+            ><el-option label="Coze" value="COZE" /><el-option
+              label="Dify"
+              value="DIFY" /><el-option label="FastGPT" value="FASTGPT" /><el-option
+              label="通义千问"
+              value="QWEN" /><el-option label="DeepSeek" value="DEEPSEEK" /><el-option
+              label="豆包"
+              value="DOUBAO" /></el-select
         ></el-form-item>
         <el-form-item label="接口地址" required
           ><el-input v-model="form.baseUrl" placeholder="https://..."
@@ -200,8 +205,8 @@
 
       <template v-if="activeTab === 'prompts'">
         <el-form-item label="类型" required
-          ><el-select v-model="form.type" class="w-full"
-            ><el-option label="系统提示词" value="SYSTEM" /><el-option
+          ><el-select v-model="form.type" class="w-full" :disabled="!!editingId"
+            ><el-option label="角色" value="SYSTEM" /><el-option
               label="记忆提取"
               value="MEMORY_EXTRACT" /><el-option
               label="记忆摘要"
@@ -218,7 +223,7 @@
         <el-form-item label="描述"
           ><el-input v-model="form.description" type="textarea" :rows="2" maxlength="1000"
         /></el-form-item>
-        <el-form-item label="系统提示词" required
+        <el-form-item label="角色" required
           ><el-select v-model="form.systemPromptId" class="w-full" filterable
             ><el-option
               v-for="item in systemPrompts"
@@ -269,22 +274,54 @@
                 :value="item.id" /></el-select
           ></el-form-item>
         </template>
-        <el-form-item label="会话记忆"
-          ><el-select v-model="form.memoryMode" class="w-full"
-            ><el-option label="不使用" value="NONE" /><el-option
-              label="会话内"
-              value="SESSION" /><el-option label="长期" value="LONG_TERM" /></el-select
-        ></el-form-item>
-        <el-form-item v-if="form.memoryMode === 'LONG_TERM'" label="长期记忆"
-          ><el-checkbox v-model="form.memoryReadEnabled">允许读取</el-checkbox
-          ><el-checkbox v-model="form.memoryWriteEnabled">允许写入</el-checkbox></el-form-item
+        <el-form-item label="记忆实现">
+          <el-select v-model="form.memoryMode" class="w-full">
+            <el-option
+              v-for="option in memoryOptions"
+              :key="option.mode"
+              :label="option.name + (option.configured ? '' : '（待配置）')"
+              :value="option.mode"
+              :disabled="!option.configured"
+            />
+            <el-option label="仅保留会话上下文" value="SESSION" />
+            <el-option label="不使用（旧配置）" value="NONE" />
+          </el-select>
+        </el-form-item>
+        <el-alert
+          v-if="persistentMemory(form.memoryMode)"
+          :closable="false"
+          type="info"
+          class="mb-4"
         >
+          <template #title>{{ memoryDescription }}</template>
+          <span v-if="form.realtimeMode !== 'CASCADE'"
+            >原生实时仅在连接时载入称呼、表达方式等沟通偏好；宠物、工作等历史事实需要选择级联模式，按当前问题检索。</span
+          >
+        </el-alert>
+        <el-form-item
+          v-if="persistentMemory(form.memoryMode) && form.realtimeMode === 'NATIVE'"
+          label="记忆总结模型"
+          :required="needsSummaryModel(form.memoryMode)"
+        >
+          <el-select v-model="form.conversationModelId" class="w-full" filterable>
+            <el-option
+              v-for="item in modelsOfType('CHAT')"
+              :key="item.id"
+              :label="item.name"
+              :value="item.id"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item v-if="persistentMemory(form.memoryMode)" label="记忆权限">
+          <el-checkbox v-model="form.memoryReadEnabled">允许读取</el-checkbox>
+          <el-checkbox v-model="form.memoryWriteEnabled">允许保存</el-checkbox>
+        </el-form-item>
         <el-form-item label="语音配置 JSON"
           ><el-input v-model="form.voiceConfigJson" type="textarea" :rows="2" placeholder="可留空"
         /></el-form-item>
       </template>
 
-      <el-form-item v-if="activeTab !== 'prompts' || !editingId" label="状态"
+      <el-form-item label="状态"
         ><el-switch
           v-model="form.status"
           active-value="ENABLED"
@@ -340,6 +377,7 @@
 </template>
 
 <script lang="ts" setup>
+import { MemoryProviderApi, type MemoryProviderStatus } from '@/api/ai/memory'
 import { AgentApi, ModelApi, PromptApi, ProviderApi } from '@/api/ai/enterprise'
 import type {
   Agent,
@@ -360,12 +398,38 @@ defineOptions({ name: 'AiEnterpriseManagement' })
 type Tab = 'agents' | 'prompts' | 'models' | 'providers'
 const message = useMessage()
 const can = (permission: string) => hasPermission([permission])
-const activeTab = ref<Tab>('agents')
+const props = defineProps<{ initialTab?: Tab }>()
+const activeTab = ref<Tab>(props.initialTab || 'agents')
 const loading = ref(false)
 const saving = ref(false)
 const dialogVisible = ref(false)
 const bindingVisible = ref(false)
 const editingId = ref<number | null>(null)
+const memoryOptions = ref<MemoryProviderStatus[]>([
+  { mode: 'NOMEM', provider: 'nomem', name: '关闭记忆', configured: true, saveMessageThreshold: 6 },
+  {
+    mode: 'MEM_LOCAL_SHORT',
+    provider: 'mem_local_short',
+    name: '本地短期记忆',
+    configured: true,
+    saveMessageThreshold: 6
+  },
+  {
+    mode: 'LONG_TERM',
+    provider: 'mysql',
+    name: '数据库分类记忆（兼容）',
+    configured: true,
+    saveMessageThreshold: 6
+  }
+])
+const persistentMemory = (mode: string) =>
+  ['LONG_TERM', 'MEM_LOCAL_SHORT', 'MEM0AI', 'POWERMEM'].includes(mode)
+const needsSummaryModel = (mode: string) => ['LONG_TERM', 'MEM_LOCAL_SHORT'].includes(mode)
+const memoryDescription = computed(() => {
+  const option = memoryOptions.value.find((item) => item.mode === form.memoryMode)
+  const messages = option?.saveMessageThreshold || 6
+  return `积累 ${messages} 条消息或会话结束后保存；明确要求记住时立即处理。记忆服务异常时仍可继续对话。`
+})
 const agents = ref<Agent[]>([])
 const prompts = ref<Prompt[]>([])
 const models = ref<Model[]>([])
@@ -378,13 +442,13 @@ const defaultAgent = ref(false)
 const modelTypes = ['CHAT', 'REALTIME_S2S', 'ASR', 'TTS', 'EMBEDDING']
 const tabLabels: Record<Tab, string> = {
   agents: '智能体',
-  prompts: '提示词',
+  prompts: '角色',
   models: '模型',
   providers: '服务商'
 }
 const tabDescriptions: Record<Tab, string> = {
   agents: '配置对话与实时语音能力，并绑定到机器人',
-  prompts: '提示词按版本保存，已有版本不可修改',
+  prompts: '定义角色的行为和表达方式，提示词可随时修改',
   models: '登记可供智能体选择的模型',
   providers: '管理模型服务地址及访问密钥'
 }
@@ -426,23 +490,31 @@ const emptyForm = () => ({
   status: 'ENABLED' as RecordStatus
 })
 const form = reactive(emptyForm())
+const promptTypeName = (type: string) =>
+  ({
+    SYSTEM: '对话角色',
+    MEMORY_EXTRACT: '记忆提取',
+    MEMORY_SUMMARY: '记忆摘要',
+    TOOL_ROUTING: '工具路由'
+  })[type] || type
 const statusLabel = (status: string) => (status === 'ENABLED' ? '启用' : '停用')
 const modeLabel = (mode: string) =>
   ({ NATIVE: '原生实时', CASCADE: '级联', AUTO: '自动' })[mode] || mode
-const promptName = (id: number) => prompts.value.find((item) => item.id === id)?.name || `#${id}`
+const promptName = (id: number) => prompts.value.find((item) => item.id === id)?.name || '已删除'
 const providerName = (id: number) =>
-  providers.value.find((item) => item.id === id)?.name || `#${id}`
+  providers.value.find((item) => item.id === id)?.name || '已删除'
 const modelsOfType = (type: string) =>
   models.value.filter((item) => item.modelType === type && item.status === 'ENABLED')
 const systemPrompts = computed(() =>
   prompts.value.filter((item) => item.type === 'SYSTEM' && item.status === 'ENABLED')
 )
 const robotLabel = (id: number) =>
-  robotOptions.value.find((item) => item.id === id)?.name || `机器人 #${id}`
+  robotOptions.value.find((item) => item.id === id)?.name || '已删除的机器人'
 
 const loadAll = async () => {
   loading.value = true
   try {
+    if (can('ai:agent:query')) memoryOptions.value = await MemoryProviderApi.list()
     const [agentData, promptData, modelData, providerData] = await Promise.all([
       can('ai:agent:query') ? AgentApi.list() : Promise.resolve<Agent[]>([]),
       can('ai:prompt:query') ? PromptApi.list() : Promise.resolve<Prompt[]>([]),
@@ -465,7 +537,7 @@ const openCreate = () => {
   Object.assign(form, emptyForm())
   dialogVisible.value = true
 }
-const openEdit = (row: Agent | Model | Provider) => {
+const openEdit = (row: Agent | Model | Provider | Prompt) => {
   editingId.value = row.id
   Object.assign(form, emptyForm(), row, { apiKey: '' })
   dialogVisible.value = true
@@ -484,8 +556,13 @@ const validJson = (value: string, label: string) => {
   }
 }
 const save = async () => {
-  if (!form.name.trim() || !form.code.trim()) {
-    message.warning('请填写名称和编码')
+  if (
+    !form.name.trim() ||
+    (['agents', 'providers'].includes(activeTab.value) && !form.code.trim())
+  ) {
+    message.warning(
+      ['agents', 'providers'].includes(activeTab.value) ? '请填写名称和编码' : '请填写名称'
+    )
     return
   }
   if (
@@ -530,17 +607,17 @@ const save = async () => {
       else await ModelApi.create(data)
     } else if (activeTab.value === 'prompts') {
       if (!form.content.trim()) {
-        message.warning('请填写提示词内容')
+        message.warning('请填写角色提示词')
         return
       }
       const data: PromptInput = {
         name: form.name.trim(),
-        code: form.code.trim(),
         type: form.type,
         content: form.content,
         status: form.status
       }
-      await PromptApi.create(data)
+      if (editingId.value) await PromptApi.update(editingId.value, data)
+      else await PromptApi.create(data)
     } else {
       if (
         !form.systemPromptId ||
@@ -548,7 +625,11 @@ const save = async () => {
         (form.realtimeMode !== 'NATIVE' &&
           (!form.conversationModelId || !form.asrModelId || !form.ttsModelId))
       ) {
-        message.warning('请选齐当前语音模式需要的提示词和模型')
+        message.warning('请选齐当前语音模式需要的角色和模型')
+        return
+      }
+      if (needsSummaryModel(form.memoryMode) && !form.conversationModelId) {
+        message.warning('请选择记忆总结模型')
         return
       }
       const data: AgentInput = {
@@ -556,14 +637,17 @@ const save = async () => {
         code: form.code.trim(),
         description: form.description || null,
         systemPromptId: form.systemPromptId,
-        conversationModelId: form.realtimeMode === 'NATIVE' ? null : form.conversationModelId,
+        conversationModelId:
+          form.realtimeMode === 'NATIVE' && !persistentMemory(form.memoryMode)
+            ? null
+            : form.conversationModelId,
         realtimeModelId: form.realtimeMode === 'CASCADE' ? null : form.realtimeModelId,
         asrModelId: form.realtimeMode === 'NATIVE' ? null : form.asrModelId,
         ttsModelId: form.realtimeMode === 'NATIVE' ? null : form.ttsModelId,
         realtimeMode: form.realtimeMode,
         memoryMode: form.memoryMode,
-        memoryReadEnabled: form.memoryMode === 'LONG_TERM' && form.memoryReadEnabled,
-        memoryWriteEnabled: form.memoryMode === 'LONG_TERM' && form.memoryWriteEnabled,
+        memoryReadEnabled: persistentMemory(form.memoryMode) && form.memoryReadEnabled,
+        memoryWriteEnabled: persistentMemory(form.memoryMode) && form.memoryWriteEnabled,
         knowledgeEnabled: false,
         voiceConfigJson: form.voiceConfigJson || null,
         status: form.status

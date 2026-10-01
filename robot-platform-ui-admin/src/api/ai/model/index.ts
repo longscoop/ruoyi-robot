@@ -1,5 +1,5 @@
 import request from '@/config/axios'
-export interface ProviderVO { id:number; name:string; code:string; providerType:'QWEN'|'DEEPSEEK'|'DOUBAO'; baseUrl:string; configJson?:string; status:string; apiKeyConfigured:boolean }
+export interface ProviderVO { id:number; name:string; code:string; providerType:'QWEN'|'DEEPSEEK'|'DOUBAO'|'COZE'|'DIFY'|'FASTGPT'; baseUrl:string; configJson?:string; status:string; apiKeyConfigured:boolean }
 export interface ProviderWriteVO { name:string; code:string; providerType:string; baseUrl:string; apiKey?:string; configJson?:string; status?:string }
 export interface AiModelVO { id:number; providerId:number; name:string; modelCode:string; modelType:'CHAT'|'REALTIME_S2S'|'ASR'|'TTS'|'EMBEDDING'; capabilitiesJson?:string; configJson?:string; status:string }
 export const AiModelApi = {

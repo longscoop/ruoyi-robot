@@ -79,6 +79,37 @@ class AiPromptServiceTest {
         verify(mapper).selectByIdAndTenantId(11L, 1L);
     }
 
+    @Test
+    void createRoleWithoutManualCodeGeneratesInternalIdentifier() {
+        var row = new AiPromptServiceImpl(mapper).create(new AiPromptService.CreatePromptCommand(
+                1, "家庭助手", null, "SYSTEM", "自然地帮助家人", "ENABLED"));
+        assertTrue(row.getCode().startsWith("role-"));
+        assertEquals(1, row.getVersion());
+        verify(mapper).insert(row);
+    }
+
+    @Test
+    void editingRolePreservesItsIdAndCodeForExistingAgents() {
+        var existing = prompt(11, 1, "internal-role", 1, "old");
+        when(mapper.selectByIdAndTenantId(11, 1)).thenReturn(existing);
+        when(mapper.selectLatestByCodeAndTenantId("internal-role", 1)).thenReturn(existing);
+        var updated = new AiPromptServiceImpl(mapper).update(1, 11,
+                new AiPromptService.CreatePromptCommand(1, "新版角色", null, "SYSTEM", "new", "ENABLED"));
+        assertEquals(11, updated.getId());
+        assertEquals("internal-role", updated.getCode());
+        assertEquals("new", updated.getContent());
+        assertEquals(2, updated.getVersion());
+        verify(mapper).updateById(updated);
+        verify(mapper, never()).insert(any(AiPromptDO.class));
+    }
+
+    @Test
+    void anotherTenantCannotEditARole() {
+        assertThrows(ServiceException.class, () -> new AiPromptServiceImpl(mapper).update(2, 11,
+                new AiPromptService.CreatePromptCommand(2, "x", null, "SYSTEM", "x", "ENABLED")));
+        verifyNoInteractions(mapper);
+    }
+
     private static AiPromptDO prompt(long id, long tenantId, String code, int version, String content) {
         AiPromptDO row = new AiPromptDO();
         row.setId(id);

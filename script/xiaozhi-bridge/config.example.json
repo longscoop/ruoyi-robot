@@ -1,0 +1,19 @@
+{
+  "host": "0.0.0.0",
+  "port": 8003,
+  "idle_timeout_seconds": 30,
+  "max_utterance_seconds": 30,
+  "end_silence_ms": 550,
+  "public_url": "http://192.168.1.100:8003",
+  "backend_url": "http://127.0.0.1:48080",
+  "devices": [
+    {
+      "mac": "aa:bb:cc:dd:ee:ff",
+      "device_sn": "xiaozhi-test-001",
+      "http_secret": "REPLACE_WITH_DEVICE_ACTIVATION_HTTP_SECRET",
+      "agent_code": "xiaozhi-test",
+      "bootstrap_token": "REPLACE_WITH_RANDOM_32_BYTE_TOKEN",
+      "websocket_token": "REPLACE_WITH_ANOTHER_RANDOM_32_BYTE_TOKEN"
+    }
+  ]
+}

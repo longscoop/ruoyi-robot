@@ -15,7 +15,7 @@ import static com.robot.platform.framework.common.exception.util.ServiceExceptio
 
 @Service
 public class AiModelProviderServiceImpl implements AiModelProviderService {
-    private static final Set<String> SUPPORTED_PROVIDER_TYPES = Set.of("QWEN", "DEEPSEEK", "DOUBAO");
+    private static final Set<String> SUPPORTED_PROVIDER_TYPES = Set.of("QWEN", "DEEPSEEK", "DOUBAO", "COZE", "DIFY", "FASTGPT");
     private static final String DEFAULT_STATUS = "ENABLED";
 
     private final AiModelProviderMapper mapper;

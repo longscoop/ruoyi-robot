@@ -30,6 +30,22 @@ describe('enterprise AI API routes', () => {
     ])
   })
 
+  it('creates a role without a code and edits the same role', async () => {
+    const data = {
+      name: '家庭助手角色',
+      type: 'SYSTEM',
+      content: '简洁回答',
+      status: 'ENABLED' as const
+    }
+    await PromptApi.create(data)
+    await PromptApi.update(7, { ...data, content: '使用中文简洁回答' })
+    expect(request.post).toHaveBeenCalledWith({ url: '/ai/prompts', data })
+    expect(request.put).toHaveBeenCalledWith({
+      url: '/ai/prompts/7',
+      data: { ...data, content: '使用中文简洁回答' }
+    })
+  })
+
   it('binds and unbinds a robot under its selected agent', async () => {
     await AgentApi.bindRobot(12, { robotId: 34, defaultAgent: true })
     await AgentApi.unbindRobot(12, 34)

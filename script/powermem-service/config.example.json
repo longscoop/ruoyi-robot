@@ -1,0 +1,43 @@
+{
+  "vector_store": {
+    "provider": "sqlite",
+    "config": {
+      "database_path": "./data/powermem.db",
+      "embedding_model_dims": 1024
+    }
+  },
+  "llm": {
+    "provider": "qwen",
+    "config": {
+      "api_key": "${POWER_MEM_LLM_API_KEY}",
+      "model": "qwen-plus",
+      "temperature": 0.2
+    }
+  },
+  "embedder": {
+    "provider": "qwen",
+    "config": {
+      "api_key": "${POWER_MEM_EMBEDDING_API_KEY}",
+      "model": "text-embedding-v4",
+      "embedding_dims": 1024
+    }
+  },
+  "intelligent_memory": {
+    "enabled": true,
+    "plugin": "ebbinghaus",
+    "decay_rate": 0.1,
+    "review_intervals": [
+      1,
+      6,
+      24,
+      72,
+      168
+    ]
+  },
+  "user_profile": {
+    "enabled": true
+  },
+  "telemetry": {
+    "enabled": false
+  }
+}

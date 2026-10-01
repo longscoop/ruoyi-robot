@@ -9,6 +9,12 @@ public interface MemoryExtractor {
     List<MemoryCandidate> extract(CompletedTurn turn, ConversationIdentity identity,
                                   MemoryDirectiveParser.Directive directive);
 
-    record CompletedTurn(String userText, String assistantText) {
+    default List<MemoryCandidate> extract(CompletedTurn turn, ConversationIdentity identity,
+            MemoryDirectiveParser.Directive directive, com.robot.platform.ai.agent.service.AiAgentConfig agent) {
+        return extract(turn, identity, directive);
+    }
+
+    record CompletedTurn(String userText, String assistantText, Long conversationId) {
+        public CompletedTurn(String userText, String assistantText) { this(userText, assistantText, null); }
     }
 }

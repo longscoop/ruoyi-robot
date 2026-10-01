@@ -28,6 +28,8 @@ public class RealtimeModelRouter {
     }
 
     private static RealtimeRoute autoRoute(AiAgentConfig agent, ModelCapabilities capabilities) {
+        if (agent.memoryReadEnabled() && java.util.Set.of("MEM_LOCAL_SHORT", "MEM0AI", "POWERMEM").contains(agent.memoryMode()))
+            return cascadeRoute(agent, capabilities, "AUTO_MEMORY_RECALL");
         boolean capabilityFallback = !capabilities.nativeRealtimeSupported()
                 || capabilities.turnRequiresChatOnlyCapability()
                 || (capabilities.turnRequiresToolPath() && !capabilities.nativeToolCallingSupported());

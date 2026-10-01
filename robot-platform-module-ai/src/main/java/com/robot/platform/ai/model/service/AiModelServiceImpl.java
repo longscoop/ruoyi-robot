@@ -34,7 +34,7 @@ public class AiModelServiceImpl implements AiModelService {
         String modelType = requireModelType(command.modelType());
         requireText(command.name(), "Model name must not be blank");
         requireText(command.modelCode(), "Model code must not be blank");
-        requireOwnedProvider(command.tenantId(), command.providerId());
+        validateProviderModelType(requireOwnedProvider(command.tenantId(), command.providerId()), modelType);
 
         AiModelDO row = new AiModelDO();
         row.setTenantId(command.tenantId());
@@ -60,7 +60,7 @@ public class AiModelServiceImpl implements AiModelService {
         String modelType = requireModelType(command.modelType());
         requireText(command.name(), "Model name must not be blank");
         requireText(command.modelCode(), "Model code must not be blank");
-        requireOwnedProvider(command.tenantId(), command.providerId());
+        validateProviderModelType(requireOwnedProvider(command.tenantId(), command.providerId()), modelType);
 
         row.setProviderId(command.providerId());
         row.setName(command.name().trim());
@@ -104,10 +104,17 @@ public class AiModelServiceImpl implements AiModelService {
         return row;
     }
 
-    private void requireOwnedProvider(long tenantId, long providerId) {
+    private AiModelProviderDO requireOwnedProvider(long tenantId, long providerId) {
         AiModelProviderDO provider = providerMapper.selectByIdAndTenantId(providerId, tenantId);
         if (provider == null) {
             throw invalidParamException("AI model provider does not exist in current tenant");
+        }
+        return provider;
+    }
+
+    private static void validateProviderModelType(AiModelProviderDO provider, String modelType) {
+        if (Set.of("COZE", "DIFY", "FASTGPT").contains(provider.getProviderType()) && !"CHAT".equals(modelType)) {
+            throw invalidParamException("{} provider supports CHAT models only", provider.getProviderType());
         }
     }
 

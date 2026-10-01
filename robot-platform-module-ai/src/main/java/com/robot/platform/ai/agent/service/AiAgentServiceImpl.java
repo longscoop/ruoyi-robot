@@ -19,12 +19,20 @@ import static com.robot.platform.framework.common.exception.util.ServiceExceptio
 @Service
 public class AiAgentServiceImpl implements AiAgentService {
     private static final Set<String> REALTIME_MODES = Set.of("NATIVE", "CASCADE", "AUTO");
-    private static final Set<String> MEMORY_MODES = Set.of("NONE", "SESSION", "LONG_TERM");
+    private static final Set<String> MEMORY_MODES = com.robot.platform.ai.memory.provider.MemoryModes.MODES;
     private static final String DEFAULT_STATUS = "ENABLED";
 
     private final AiAgentMapper agentMapper;
     private final AiPromptMapper promptMapper;
     private final AiModelMapper modelMapper;
+    private com.robot.platform.ai.memory.provider.MemoryProviderRegistry memoryProviders;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public AiAgentServiceImpl(AiAgentMapper a, AiPromptMapper p, AiModelMapper m,
+                              com.robot.platform.ai.memory.provider.MemoryProviderRegistry memoryProviders) {
+        this(a,p,m);
+        this.memoryProviders=memoryProviders;
+    }
 
     public AiAgentServiceImpl(AiAgentMapper agentMapper, AiPromptMapper promptMapper, AiModelMapper modelMapper) {
         this.agentMapper = agentMapper;
@@ -118,6 +126,10 @@ public class AiAgentServiceImpl implements AiAgentService {
         String normalizedRealtimeMode = normalize(realtimeMode, REALTIME_MODES, "realtime mode");
         String normalizedMemoryMode = normalize(memoryMode, MEMORY_MODES, "memory mode");
         validateModelRoute(tenantId, normalizedRealtimeMode, conversationModelId, realtimeModelId, asrModelId, ttsModelId);
+        if (Set.of("LONG_TERM", "MEM_LOCAL_SHORT").contains(normalizedMemoryMode))
+            requireModelType(tenantId, conversationModelId, "CHAT", "memory summary model");
+        if (memoryProviders != null && !memoryProviders.require(normalizedMemoryMode).configured(tenantId))
+            throw invalidParamException("所选记忆服务尚未配置，请先配置服务地址与密钥");
         return new ValidatedAgentConfig(normalizedRealtimeMode, normalizedMemoryMode);
     }
 

@@ -21,6 +21,12 @@ public class AiMemoryAdminService {
 
     public void update(long tenantId, long id, String content, String summary,
                        BigDecimal importance, LocalDateTime expiresAt) {
+        update(tenantId, id, content, summary, importance, expiresAt, null);
+    }
+
+    public void update(long tenantId, long id, String content, String summary,
+                       BigDecimal importance, LocalDateTime expiresAt, String memoryType) {
+        String category = MemoryCategories.validate(memoryType);
         if (content == null || content.isBlank()) {
             throw new IllegalArgumentException("Memory content must not be blank");
         }
@@ -29,7 +35,7 @@ public class AiMemoryAdminService {
             throw new IllegalArgumentException("Memory importance must be between 0 and 1");
         }
         if (mapper.updateActiveByTenantId(id, tenantId, content.trim(), summary,
-                importance, expiresAt) != 1) {
+                importance, expiresAt, category) != 1) {
             throw new IllegalArgumentException("Active memory does not exist in tenant");
         }
     }

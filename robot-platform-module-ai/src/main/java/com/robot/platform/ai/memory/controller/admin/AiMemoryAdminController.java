@@ -37,7 +37,7 @@ public class AiMemoryAdminController {
     @PreAuthorize("@ss.hasPermission('ai:memory:update')")
     public CommonResult<Boolean> update(@PathVariable long id, @RequestBody UpdateReq request) {
         service.update(TenantContextHolder.getRequiredTenantId(), id, request.content(),
-                request.summary(), request.importance(), request.expiresAt());
+                request.summary(), request.importance(), request.expiresAt(), request.memoryType());
         return success(true);
     }
 
@@ -49,6 +49,6 @@ public class AiMemoryAdminController {
     }
 
     public record UpdateReq(String content, String summary, BigDecimal importance,
-                            LocalDateTime expiresAt) {
+                            LocalDateTime expiresAt, String memoryType) {
     }
 }

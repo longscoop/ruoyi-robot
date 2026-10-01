@@ -8,6 +8,8 @@ public interface AiPromptService {
 
     AiPromptDO create(CreatePromptCommand command);
 
+    AiPromptDO update(long tenantId, long id, CreatePromptCommand command);
+
     AiPromptDO get(long tenantId, long id);
 
     List<AiPromptDO> list(long tenantId);
