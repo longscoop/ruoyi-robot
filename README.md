@@ -231,11 +231,14 @@ RuoYi Robot 提供建立在 **Realtime Agent** 之上的数字人能力。
 - 口型策略
 - 状态动作
 
-当前 V1 支持：
+当前支持可切换的渲染后端：
 
 ```
 STATIC_2D
+LIVETALKING（WebRTC 实时音视频）
 ```
+
+LiveTalking 支持选择服务实例和形象，实时回答音频驱动口型，支持打断。可通过不同实例切换 Wav2Lip、MuseTalk 等模型。管理端可连接视频并试听，部署、接口和联调步骤见 [LiveTalking 数字人接入](docs/digital-human-livetalking.md)。旧配置默认使用静态形象，无需数据库迁移。
 
 并预留：
 

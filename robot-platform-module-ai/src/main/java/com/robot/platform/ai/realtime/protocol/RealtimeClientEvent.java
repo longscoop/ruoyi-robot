@@ -4,6 +4,10 @@ public sealed interface RealtimeClientEvent {
 
     String type();
 
+    record DigitalHumanOfferEvent(String sdp) implements RealtimeClientEvent {
+        @Override public String type() { return "digital_human.offer"; }
+    }
+
     record CandidateIdentity(Long memberId, String type, Double confidence) {
         public CandidateIdentity {
             if (confidence != null && (confidence < 0.0 || confidence > 1.0)) {

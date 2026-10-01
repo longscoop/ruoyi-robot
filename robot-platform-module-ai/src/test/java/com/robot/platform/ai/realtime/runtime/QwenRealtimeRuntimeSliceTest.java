@@ -51,7 +51,8 @@ class QwenRealtimeRuntimeSliceTest {
 
         assertNotNull(qwen.openedModel);
         assertEquals("qwen-model-from-db", qwen.openedModel.modelCode());
-        assertEquals("system prompt", qwen.openedModel.realtimeInstructions());
+        assertTrue(qwen.openedModel.realtimeInstructions().startsWith("system prompt"));
+        assertTrue(qwen.openedModel.realtimeInstructions().contains("voice_interaction_rules"));
         assertEquals("{\"voice\":\"Cherry\"}", qwen.openedModel.voiceConfigJson());
         assertEquals("decrypted-secret", qwen.openedModel.credential());
         assertInstanceOf(RealtimeServerEvent.SessionCreatedEvent.class, output.events.get(0));

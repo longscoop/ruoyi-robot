@@ -21,15 +21,26 @@ public class QwenRealtimeVoiceClient implements RealtimeVoiceClient {
 
     private final QwenRealtimeCodec codec;
     private final WebSocketConnector connector;
+    private final java.time.Duration connectTimeout;
 
-    @Autowired
     public QwenRealtimeVoiceClient(QwenRealtimeCodec codec) {
         this(codec, new JdkWebSocketConnector(HttpClient.newHttpClient()));
     }
 
+    @Autowired
+    public QwenRealtimeVoiceClient(QwenRealtimeCodec codec,
+            @org.springframework.beans.factory.annotation.Qualifier("aiModelHttpClient") HttpClient client) {
+        this(codec, new JdkWebSocketConnector(client));
+    }
+
     QwenRealtimeVoiceClient(QwenRealtimeCodec codec, WebSocketConnector connector) {
+        this(codec, connector, java.time.Duration.ofSeconds(10));
+    }
+
+    QwenRealtimeVoiceClient(QwenRealtimeCodec codec, WebSocketConnector connector, java.time.Duration timeout) {
         this.codec = Objects.requireNonNull(codec, "codec");
         this.connector = Objects.requireNonNull(connector, "connector");
+        this.connectTimeout = Objects.requireNonNull(timeout, "timeout");
     }
 
     @Override
@@ -51,9 +62,23 @@ public class QwenRealtimeVoiceClient implements RealtimeVoiceClient {
         return connect(model, new QwenRealtimeSession(codec, model, listener));
     }
 
+    @Override
+    public RealtimeProviderSession openTurnAware(ResolvedModel model, RealtimeTurnListener listener,
+                                                  java.util.function.Function<String, String> instructions) {
+        validate(model);
+        // Without ASR the provider cannot wait for a transcript; retain the legacy streaming path.
+        boolean transcribes = model.voiceConfigJson() != null
+                && com.robot.platform.framework.common.util.json.JsonUtils.parseTree(model.voiceConfigJson())
+                .path("input_audio_transcription").isObject();
+        QwenRealtimeSession session = new QwenRealtimeSession(codec, model, listener);
+        if (transcribes) session.setResponseInstructions(instructions);
+        return connect(model, session);
+    }
+
     private RealtimeProviderSession connect(ResolvedModel model, QwenRealtimeSession session) {
         URI uri = buildUri(model.baseUrl(), model.modelCode());
-        WebSocket webSocket = connector.connect(uri, "Bearer " + model.credential(), session).join();
+        WebSocket webSocket = connector.connect(uri, "Bearer " + model.credential(), session)
+                .orTimeout(connectTimeout.toMillis(), java.util.concurrent.TimeUnit.MILLISECONDS).join();
         session.bind(webSocket);
         return session;
     }
@@ -85,6 +110,7 @@ public class QwenRealtimeVoiceClient implements RealtimeVoiceClient {
         @Override
         public CompletableFuture<WebSocket> connect(URI uri, String authorization, WebSocket.Listener listener) {
             return httpClient.newWebSocketBuilder()
+                    .connectTimeout(java.time.Duration.ofSeconds(10))
                     .header("Authorization", authorization)
                     .buildAsync(uri, listener);
         }

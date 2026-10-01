@@ -33,6 +33,11 @@ public class QwenAsrClient implements AsrClient {
         this(new JdkWebSocketConnector(HttpClient.newHttpClient()));
     }
 
+    @org.springframework.beans.factory.annotation.Autowired
+    public QwenAsrClient(@org.springframework.beans.factory.annotation.Qualifier("aiModelHttpClient") HttpClient client) {
+        this(new JdkWebSocketConnector(client));
+    }
+
     QwenAsrClient(WebSocketConnector connector) {
         this.connector = Objects.requireNonNull(connector, "connector");
     }
@@ -56,9 +61,20 @@ public class QwenAsrClient implements AsrClient {
         }
 
         Session session = new Session(model, listener);
-        WebSocket socket = connector.connect(URI.create(model.baseUrl()), Map.copyOf(headers), session).join();
-        session.bind(socket);
+        connector.connect(endpoint(model), Map.copyOf(headers), session)
+                .orTimeout(10, java.util.concurrent.TimeUnit.SECONDS).whenComplete((socket, error) -> {
+                    if (error != null) session.connectionFailed(error);
+                    else session.bind(socket);
+                });
         return session;
+    }
+
+    private static URI endpoint(ResolvedModel model) {
+        String override=text(objectOrEmpty(model.modelConfigJson()), "endpoint");
+        URI uri=URI.create(override == null ? model.baseUrl() : override);
+        if (!java.util.Set.of("ws", "wss").contains(uri.getScheme()) || uri.getHost()==null || uri.getUserInfo()!=null)
+            throw new IllegalArgumentException("ASR endpoint must be a WebSocket URL");
+        return uri;
     }
 
     private static void validate(ResolvedModel model) {
@@ -82,20 +98,27 @@ public class QwenAsrClient implements AsrClient {
         @Override
         public CompletableFuture<WebSocket> connect(URI uri, Map<String, String> headers,
                                                     WebSocket.Listener listener) {
-            WebSocket.Builder builder = client.newWebSocketBuilder();
+            WebSocket.Builder builder = client.newWebSocketBuilder().connectTimeout(java.time.Duration.ofSeconds(10));
             headers.forEach(builder::header);
             return builder.buildAsync(uri, listener);
         }
     }
 
     private static final class Session implements AsrSession, WebSocket.Listener {
-        private static final int MAX_PENDING_AUDIO_BYTES = 256 * 1024;
+        // Admin previews submit up to 30 seconds at once, before task-started arrives.
+        // Keep a hard bound while accepting the same PCM16/16 kHz limit as the preview API.
+        private static final int MAX_PENDING_AUDIO_BYTES = 30 * 16000 * 2;
 
         private final ResolvedModel model;
         private final AsrListener listener;
         private final String taskId = UUID.randomUUID().toString();
         private final Deque<ByteBuffer> pendingAudio = new ArrayDeque<>();
         private final StringBuilder textBuffer = new StringBuilder();
+        private final StringBuilder utterance = new StringBuilder();
+        private final Deque<ProviderEvent> deliveries = new ArrayDeque<>();
+        private String lastSentenceKey;
+        private String partialSentence = "";
+        private boolean transcriptDone;
 
         private WebSocket socket;
         private int pendingAudioBytes;
@@ -112,6 +135,7 @@ public class QwenAsrClient implements AsrClient {
         }
 
         synchronized void bind(WebSocket socket) {
+            if (closed || cancelled) { socket.abort(); return; }
             if (this.socket == null) {
                 this.socket = socket;
             } else if (this.socket != socket) {
@@ -156,29 +180,43 @@ public class QwenAsrClient implements AsrClient {
 
         @Override
         public synchronized void cancel() {
-            if (closed) {
-                return;
+            if (closed) return;
+            cancelled = closed = true;
+            pendingAudio.clear(); pendingAudioBytes = 0;
+            if (socket != null) socket.abort();
+        }
+
+        private void connectionFailed(Throwable error) {
+            synchronized (this) {
+                if (closed || cancelled) return;
+                closed = true; pendingAudio.clear(); pendingAudioBytes = 0;
+                if (socket != null) socket.abort();
             }
-            cancelled = true;
-            pendingAudio.clear();
-            pendingAudioBytes = 0;
-            if (ready && !finishSent) {
-                sendFinishTask();
-            }
-            closed = true;
-            if (socket != null) {
-                socket.sendClose(WebSocket.NORMAL_CLOSURE, "").join();
-            }
+            Throwable cause = error;
+            while (cause instanceof java.util.concurrent.CompletionException && cause.getCause() != null)
+                cause = cause.getCause();
+            int status = cause instanceof java.net.http.WebSocketHandshakeException handshake
+                    ? handshake.getResponse().statusCode() : 0;
+            boolean timeout = cause instanceof java.util.concurrent.TimeoutException
+                    || cause instanceof java.net.http.HttpTimeoutException;
+            String code = status == 401 || status == 403 ? "asr_auth_failed"
+                    : timeout ? "asr_connect_timeout" : "asr_connect_failed";
+            org.slf4j.LoggerFactory.getLogger(QwenAsrClient.class).warn(
+                    "ASR connection failed: model={} host={} category={} exception={} httpStatus={}",
+                    model.modelId(), endpoint(model).getHost(), code, cause.getClass().getSimpleName(), status);
+            listener.onEvent(new ProviderEvent.ProviderError(code, "ASR connection failed", status != 401 && status != 403));
         }
 
         @Override
         public synchronized void onOpen(WebSocket webSocket) {
+            if (closed || cancelled) { webSocket.abort(); return; }
             socket = webSocket;
             webSocket.request(1);
         }
 
         @Override
         public CompletionStage<?> onText(WebSocket webSocket, CharSequence data, boolean last) {
+            java.util.List<ProviderEvent> events;
             synchronized (this) {
                 textBuffer.append(data);
                 if (last) {
@@ -186,7 +224,11 @@ public class QwenAsrClient implements AsrClient {
                     textBuffer.setLength(0);
                     handleServer(json);
                 }
+                events = java.util.List.copyOf(deliveries);
+                deliveries.clear();
             }
+            // Never call the runtime while holding the ASR session monitor.
+            events.forEach(listener::onEvent);
             webSocket.request(1);
             return null;
         }
@@ -244,19 +286,27 @@ public class QwenAsrClient implements AsrClient {
                         return;
                     }
                     String value = sentence.path("text").asText("");
-                    listener.onEvent(sentence.path("sentence_end").asBoolean(false)
-                            ? new ProviderEvent.TranscriptDone(value)
-                            : new ProviderEvent.TranscriptDelta(value));
+                    boolean ended = sentence.path("sentence_end").asBoolean(false);
+                    if (ended) {
+                        String key = sentence.path("begin_time").asText("") + ":" + value;
+                        if (!key.equals(lastSentenceKey)) { utterance.append(value); lastSentenceKey = key; }
+                        partialSentence = "";
+                    } else partialSentence = value;
+                    deliveries.add(new ProviderEvent.TranscriptDelta(utterance.toString() + partialSentence));
                 }
                 case "task-failed" -> {
                     if (!cancelled) {
-                        listener.onEvent(new ProviderEvent.ProviderError(
+                        deliveries.add(new ProviderEvent.ProviderError(
                                 root.path("header").path("error_code").asText("task_failed"),
                                 root.path("header").path("error_message").asText("Qwen ASR task failed"),
                                 false));
                     }
                 }
                 case "task-finished" -> {
+                    if (!cancelled && !transcriptDone) {
+                        transcriptDone = true;
+                        deliveries.add(new ProviderEvent.TranscriptDone(utterance.toString()+partialSentence));
+                    }
                     pendingAudio.clear();
                     pendingAudioBytes = 0;
                     if (!closed) {

@@ -156,4 +156,14 @@ class RealtimeProtocolCodecTest {
         assertFalse(methodNames.stream().anyMatch(name -> name.toLowerCase().contains("base64")));
         assertFalse(methodNames.stream().anyMatch(name -> name.toLowerCase().contains("binary")));
     }
+    @org.junit.jupiter.api.Test void failedAssistantTurnCarriesCodeWithoutClosingSession() {
+        String json = new RealtimeProtocolCodec().encodeServerEvent(
+                new RealtimeServerEvent.AssistantFailedEvent("s", "t", "tts_connect_failed", "请再说一次"));
+        var event = com.robot.platform.framework.common.util.json.JsonUtils.parseTree(json);
+        org.junit.jupiter.api.Assertions.assertEquals("assistant.failed", event.path("type").asText());
+        org.junit.jupiter.api.Assertions.assertEquals("t", event.path("turnId").asText());
+        org.junit.jupiter.api.Assertions.assertEquals("tts_connect_failed", event.path("code").asText());
+        org.junit.jupiter.api.Assertions.assertEquals("请再说一次", event.path("message").asText());
+    }
+
 }

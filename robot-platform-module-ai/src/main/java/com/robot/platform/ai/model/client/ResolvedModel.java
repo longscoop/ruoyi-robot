@@ -52,6 +52,11 @@ public final class ResolvedModel {
                 baseUrl, providerConfigJson, modelConfigJson, credential, instructions, voiceConfigJson);
     }
 
+    public ResolvedModel withModelConfig(String configJson) {
+        return new ResolvedModel(tenantId, modelId, providerId, providerType, modelType, modelCode,
+                baseUrl, providerConfigJson, configJson, credential, realtimeInstructions, voiceConfigJson);
+    }
+
     public long tenantId() { return tenantId; }
     public long modelId() { return modelId; }
     public long providerId() { return providerId; }

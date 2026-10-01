@@ -130,9 +130,13 @@ public class AiRealtimeWebSocketHandler extends AbstractWebSocketHandler {
         }
 
         private void send(WebSocketMessage<?> message) {
+            if (!session.isOpen()) return;
             try {
                 session.sendMessage(message);
+            } catch (IllegalStateException exception) {
+                if (session.isOpen()) throw exception;
             } catch (IOException exception) {
+                if (!session.isOpen()) return;
                 throw new IllegalStateException("Failed to send realtime WebSocket output", exception);
             }
         }

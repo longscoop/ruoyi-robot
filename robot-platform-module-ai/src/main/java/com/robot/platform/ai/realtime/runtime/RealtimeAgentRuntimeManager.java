@@ -32,6 +32,9 @@ public class RealtimeAgentRuntimeManager implements AiRealtimeWebSocketHandler.R
     private final ConcurrentMap<String, RealtimeAgentRuntime> runtimes = new ConcurrentHashMap<>();
 
     @Autowired
+    private com.robot.platform.ai.digitalhuman.provider.DigitalHumanProviders renderProviders;
+
+    @Autowired
     public RealtimeAgentRuntimeManager(AiAgentRobotBindingService bindingService,
                                        AiAgentService agentService,
                                        RealtimeModelRouter router,
@@ -73,6 +76,7 @@ public class RealtimeAgentRuntimeManager implements AiRealtimeWebSocketHandler.R
                 webSocketSessionId, deviceSession, bindingService, agentService, router,
                 modelResolver, clientRegistry, identityResolver, memoryPipeline, memoryContextBuilder);
         if (digitalHumanResolver != null) runtime.attachDigitalHumanResolver(digitalHumanResolver);
+        if (renderProviders != null) runtime.attachRenderProviders(renderProviders);
         RealtimeAgentRuntime existing = runtimes.putIfAbsent(webSocketSessionId, runtime);
         if (existing != null) {
             throw new IllegalStateException("Realtime runtime already exists for WebSocket session");

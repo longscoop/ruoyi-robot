@@ -66,6 +66,58 @@ class QwenTtsClientTest {
         assertTrue(connector.webSocket.closeCode>=0);
     }
 
+    @Test void incrementalInputReusesConnectionAndCompletesOnlyAfterAllSegments() {
+        FakeConnector connector = new FakeConnector();
+        List<ProviderEvent> events = new ArrayList<>();
+        var model = new ResolvedModel(1,2,3,"QWEN","TTS","tts","wss://example.test","{}","{\"voice\":\"Cherry\"}","test");
+        var session = new QwenTtsClient(connector).openSession(model, events::add);
+        session.appendText("第一句。"); session.appendText("第二句。"); session.finishInput();
+        connector.emit("{\"type\":\"session.created\"}");
+        connector.emit("{\"type\":\"session.updated\"}");
+        assertEquals(1, connector.webSocket.text.stream().filter(t -> t.contains("input_text_buffer.commit")).count());
+        connector.emit("{\"type\":\"response.audio.done\"}");
+        assertTrue(events.isEmpty());
+        assertFalse(connector.webSocket.text.stream().anyMatch(t -> t.contains("session.finish")));
+        connector.emit("{\"type\":\"response.done\"}");
+        assertEquals(2, connector.webSocket.text.stream().filter(t -> t.contains("input_text_buffer.commit")).count());
+        connector.emit("{\"type\":\"response.done\"}");
+        assertEquals(1, connector.webSocket.text.stream().filter(t -> t.contains("session.finish")).count());
+        connector.emit("{\"type\":\"session.finished\"}");
+        assertEquals(1, events.stream().filter(ProviderEvent.AudioDone.class::isInstance).count());
+    }
+
+    @Test void cancellationDuringConnectionAbortsLateSocketWithoutAudio() {
+        var pending = new CompletableFuture<WebSocket>();
+        List<ProviderEvent> events = new ArrayList<>();
+        var model = new ResolvedModel(1,2,3,"QWEN","TTS","tts","wss://example.test","{}","{\"voice\":\"Cherry\"}","test");
+        var session = new QwenTtsClient((uri, headers, listener) -> pending).openSession(model, events::add);
+        session.cancel();
+        var socket = new FakeWebSocket(); pending.complete(socket);
+        assertEquals(1006, socket.closeCode);
+        assertTrue(events.isEmpty());
+    }
+
+    @Test void diagnosticsKeepCauseAndHttpStatusWithoutLoggingSecrets() {
+        var logger = (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(QwenTtsClient.class);
+        var logs = new ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent>();
+        logs.start(); logger.addAppender(logs);
+        try {
+            for (int status : List.of(401, 429, 503)) {
+                var response = org.mockito.Mockito.mock(java.net.http.HttpResponse.class);
+                org.mockito.Mockito.when(response.statusCode()).thenReturn(status);
+                var failure = new java.net.http.WebSocketHandshakeException(response);
+                var events = new ArrayList<ProviderEvent>();
+                var model = new ResolvedModel(1,2,3,"QWEN","TTS","tts","wss://example.test","{}","{\"voice\":\"Cherry\"}","never-log-this-secret");
+                new QwenTtsClient((uri, headers, listener) -> CompletableFuture.failedFuture(new java.util.concurrent.CompletionException(failure)))
+                        .openSession(model, events::add);
+                assertEquals(status != 401, ((ProviderEvent.ProviderError) events.get(0)).retryable());
+                assertTrue(logs.list.get(logs.list.size() - 1).getFormattedMessage().contains("httpStatus=" + status));
+            }
+            assertTrue(logs.list.stream().allMatch(e -> e.getFormattedMessage().contains("cause=WebSocketHandshakeException")));
+            assertTrue(logs.list.stream().noneMatch(e -> e.getFormattedMessage().contains("never-log-this-secret")));
+        } finally { logger.detachAppender(logs); logs.stop(); }
+    }
+
     private static final class FakeConnector implements QwenTtsClient.WebSocketConnector {
         private URI uri; private Map<String,String> headers; private WebSocket.Listener listener;
         private final FakeWebSocket webSocket=new FakeWebSocket();

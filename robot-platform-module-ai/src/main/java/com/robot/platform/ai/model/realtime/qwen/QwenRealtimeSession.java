@@ -11,11 +11,14 @@ import com.robot.platform.framework.common.util.json.JsonUtils;
 import java.net.http.WebSocket;
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.TimeUnit;
 
 final class QwenRealtimeSession implements RealtimeProviderSession, WebSocket.Listener {
 
@@ -32,6 +35,14 @@ final class QwenRealtimeSession implements RealtimeProviderSession, WebSocket.Li
     private WebSocket webSocket;
     private TurnStamp currentTurn;
     private boolean closed;
+    private java.util.function.Function<String, String> responseInstructions;
+    private TurnStamp preparingTurn;
+    private TurnStamp pendingInstructionsTurn;
+    private final java.util.Set<TurnStamp> awaitingTranscript = new java.util.HashSet<>();
+
+    synchronized void setResponseInstructions(java.util.function.Function<String, String> instructions) {
+        responseInstructions = Objects.requireNonNull(instructions, "instructions");
+    }
 
     QwenRealtimeSession(QwenRealtimeCodec codec, ResolvedModel model, RealtimeProviderListener listener) {
         this.codec = Objects.requireNonNull(codec, "codec");
@@ -81,30 +92,51 @@ final class QwenRealtimeSession implements RealtimeProviderSession, WebSocket.Li
         if (turnListener != null) {
             TurnStamp turn = requireCurrentTurn();
             pendingInputTurns.addLast(turn);
-            pendingResponseTurns.addLast(turn);
+            if (responseInstructions == null) pendingResponseTurns.addLast(turn);
+            else awaitingTranscript.add(turn);
         }
         send(codec.encodeAudioCommit());
-        send(codec.encodeResponseCreate());
+        if (responseInstructions == null) send(codec.encodeResponseCreate());
+        else {
+            TurnStamp turn = requireCurrentTurn();
+            java.util.concurrent.CompletableFuture.delayedExecutor(1, TimeUnit.SECONDS)
+                    .execute(() -> respondWithoutTranscript(turn));
+        }
     }
 
     @Override
     public synchronized void cancelCurrentResponse() {
         requireOpen();
+        // There is nothing to cancel while only ASR is in progress.
+        if (responseInstructions != null) {
+            boolean pending = awaitingTranscript.remove(currentTurn);
+            if (Objects.equals(preparingTurn, currentTurn)) { preparingTurn = null; pending = true; }
+            if (Objects.equals(pendingInstructionsTurn, currentTurn)) { pendingInstructionsTurn = null; pending = true; }
+            if (pending) return;
+        }
         send(codec.encodeResponseCancel());
     }
 
     @Override
-    public synchronized void close() {
-        if (closed) {
-            return;
+    public void close() {
+        WebSocket socket;
+        synchronized (this) {
+            if (closed) return;
+            closed = true;
+            preparingTurn = null;
+            pendingInstructionsTurn = null;
+            awaitingTranscript.clear();
+            pendingInputTurns.clear();
+            pendingResponseTurns.clear();
+            inputTurns.clear();
+            responseTurns.clear();
+            textBuffer.setLength(0);
+            socket = webSocket;
         }
-        closed = true;
-        pendingInputTurns.clear();
-        pendingResponseTurns.clear();
-        inputTurns.clear();
-        responseTurns.clear();
-        if (webSocket != null) {
-            webSocket.sendClose(WebSocket.NORMAL_CLOSURE, "").join();
+        if (socket != null) {
+            // Database/session cleanup must not wait for a provider close handshake.
+            socket.sendClose(WebSocket.NORMAL_CLOSURE, "").orTimeout(3, TimeUnit.SECONDS)
+                    .exceptionally(error -> { socket.abort(); return null; });
         }
     }
 
@@ -115,22 +147,79 @@ final class QwenRealtimeSession implements RealtimeProviderSession, WebSocket.Li
 
     @Override
     public CompletionStage<?> onText(WebSocket webSocket, CharSequence data, boolean last) {
+        List<StampedEvent> events = List.of();
         synchronized (this) {
+            if (closed) return null;
             textBuffer.append(data);
             if (last) {
                 String json = textBuffer.toString();
                 textBuffer.setLength(0);
-                handleServerText(json);
+                events = decodeServerText(json);
             }
+        }
+        // Runtime operations acquire the runtime lock before this session lock.
+        // Calling back while holding this lock deadlocks with close/interruption.
+        for (StampedEvent event : events) {
+            emit(event.turn(), event.event());
+            if (event.event() instanceof ProviderEvent.TranscriptDone transcript)
+                prepareResponse(event.turn(), transcript.text());
         }
         webSocket.request(1);
         return null;
     }
 
-    private void handleServerText(String json) {
+    private void prepareResponse(TurnStamp turn, String text) {
+        synchronized (this) {
+            if (responseInstructions == null || closed || !awaitingTranscript.contains(turn)) return;
+            if (text == null || text.replaceAll("[\\p{P}\\p{Z}\\s]", "").isBlank()) {
+                awaitingTranscript.remove(turn);
+                return;
+            }
+            awaitingTranscript.remove(turn);
+            preparingTurn = turn;
+        }
+        // Retrieval/runtime callbacks must never run under the provider session lock.
+        final String instructions;
+        try {
+            instructions = responseInstructions.apply(text);
+        } catch (RuntimeException error) {
+            emit(turn, new ProviderEvent.ProviderError("context_error", "Could not prepare response context", true));
+            return;
+        }
+        synchronized (this) {
+            if (closed || !Objects.equals(currentTurn, turn) || !Objects.equals(preparingTurn, turn)) return;
+            preparingTurn = null;
+            pendingInstructionsTurn = turn;
+            send(codec.encodeSessionUpdate(instructions, model.voiceConfigJson()));
+        }
+    }
+
+    private void respondWithoutTranscript(TurnStamp turn) {
+        try {
+            synchronized (this) {
+                if (closed || !Objects.equals(currentTurn, turn) || !awaitingTranscript.remove(turn)) return;
+                // ASR is auxiliary. A slow transcription must not block native speech response indefinitely.
+                // Reset the preceding turn's topic memories before falling back to audio-only inference.
+                pendingInstructionsTurn = turn;
+                send(codec.encodeSessionUpdate(model.realtimeInstructions(), model.voiceConfigJson()));
+            }
+        } catch (RuntimeException error) {
+            emit(turn, new ProviderEvent.ProviderError("response_start_error", "Could not start response", true));
+        }
+    }
+
+    private List<StampedEvent> decodeServerText(String json) {
         JsonNode root = JsonUtils.parseTree(json);
         String type = root.path("type").asText("");
 
+        if ("session.updated".equals(type) && pendingInstructionsTurn != null) {
+            TurnStamp prepared = pendingInstructionsTurn;
+            pendingInstructionsTurn = null;
+            if (Objects.equals(currentTurn, prepared)) {
+                pendingResponseTurns.addLast(prepared);
+                send(codec.encodeResponseCreate());
+            }
+        }
         if ("input_audio_buffer.committed".equals(type) && turnListener != null) {
             TurnStamp turn = pendingInputTurns.pollFirst();
             String itemId = root.path("item_id").asText("");
@@ -145,9 +234,9 @@ final class QwenRealtimeSession implements RealtimeProviderSession, WebSocket.Li
             }
         }
 
-        for (ProviderEvent event : codec.decodeServerEvent(json)) {
-            emit(resolveTurn(root, event), event);
-        }
+        List<StampedEvent> events = new ArrayList<>();
+        for (ProviderEvent event : codec.decodeServerEvent(json))
+            events.add(new StampedEvent(resolveTurn(root, event), event));
 
         if ("conversation.item.input_audio_transcription.completed".equals(type)) {
             String itemId = root.path("item_id").asText("");
@@ -160,6 +249,7 @@ final class QwenRealtimeSession implements RealtimeProviderSession, WebSocket.Li
                 responseTurns.remove(responseId);
             }
         }
+        return events;
     }
 
     private TurnStamp resolveTurn(JsonNode root, ProviderEvent event) {
@@ -185,7 +275,7 @@ final class QwenRealtimeSession implements RealtimeProviderSession, WebSocket.Li
 
     @Override
     public CompletionStage<?> onBinary(WebSocket webSocket, ByteBuffer data, boolean last) {
-        emit(currentTurn, new ProviderEvent.ProviderError(
+        emit(currentTurnSnapshot(), new ProviderEvent.ProviderError(
                 "unexpected_binary_frame", "Qwen realtime protocol returned an unexpected binary frame", false));
         webSocket.request(1);
         return null;
@@ -201,7 +291,7 @@ final class QwenRealtimeSession implements RealtimeProviderSession, WebSocket.Li
 
     @Override
     public void onError(WebSocket webSocket, Throwable error) {
-        emit(currentTurn, new ProviderEvent.ProviderError(
+        emit(currentTurnSnapshot(), new ProviderEvent.ProviderError(
                 "transport_error",
                 error == null || error.getMessage() == null ? "Qwen realtime transport error" : error.getMessage(),
                 true));
@@ -217,6 +307,10 @@ final class QwenRealtimeSession implements RealtimeProviderSession, WebSocket.Li
         } else {
             legacyListener.onEvent(event);
         }
+    }
+
+    private synchronized TurnStamp currentTurnSnapshot() {
+        return currentTurn;
     }
 
     private TurnStamp requireCurrentTurn() {
@@ -241,5 +335,8 @@ final class QwenRealtimeSession implements RealtimeProviderSession, WebSocket.Li
     }
 
     private record TurnStamp(String turnId, long generation) {
+    }
+
+    private record StampedEvent(TurnStamp turn, ProviderEvent event) {
     }
 }

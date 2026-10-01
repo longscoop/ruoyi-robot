@@ -17,6 +17,25 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class QwenAsrClientTest {
 
+    @Test void acceptsThirtySecondRecordingBeforeTaskStartedAndFlushesInOrder() {
+        FakeConnector connector = new FakeConnector();
+        var model = new ResolvedModel(1, 2, 3, "QWEN", "ASR", "paraformer-realtime-v2",
+                "wss://example.test", "{}", "{}", "test");
+        var session = new QwenAsrClient(connector).open(model, event -> {});
+        session.speechStarted();
+        for (int i = 0; i < 150; i++) {
+            byte[] chunk = new byte[6400]; chunk[0] = (byte) i;
+            session.appendAudio(ByteBuffer.wrap(chunk));
+        }
+        session.speechStopped();
+        assertTrue(connector.webSocket.binary.isEmpty());
+        connector.emitText("{\"header\":{\"event\":\"task-started\"}}");
+        assertEquals(150, connector.webSocket.binary.size());
+        for (int i = 0; i < 150; i++) assertEquals((byte) i, connector.webSocket.binary.get(i).get(0));
+        assertEquals("finish-task", connector.action(connector.webSocket.text.size() - 1));
+        session.cancel();
+    }
+
     @Test
     void usesRunTaskBinaryAudioFinishTaskAndNormalizesResults() {
         FakeConnector connector = new FakeConnector();
@@ -54,8 +73,9 @@ class QwenAsrClientTest {
                 """);
         assertInstanceOf(ProviderEvent.TranscriptDelta.class, events.get(0));
         assertEquals("你", ((ProviderEvent.TranscriptDelta)events.get(0)).text());
-        assertInstanceOf(ProviderEvent.TranscriptDone.class, events.get(1));
-        assertEquals("你好", ((ProviderEvent.TranscriptDone)events.get(1)).text());
+        assertInstanceOf(ProviderEvent.TranscriptDelta.class, events.get(1));
+        assertEquals("你好", ((ProviderEvent.TranscriptDelta)events.get(1)).text());
+        assertFalse(events.stream().anyMatch(ProviderEvent.TranscriptDone.class::isInstance));
 
         session.speechStopped();
         assertEquals("finish-task", connector.action(connector.webSocket.text.size()-1));
@@ -64,6 +84,8 @@ class QwenAsrClientTest {
                 {"header":{"task_id":"t","event":"task-finished","attributes":{}},"payload":{}}
                 """);
         assertEquals(WebSocket.NORMAL_CLOSURE, connector.webSocket.closeCode);
+        assertEquals("你好", ((ProviderEvent.TranscriptDone) events.get(events.size()-1)).text());
+        assertEquals(1,events.stream().filter(ProviderEvent.TranscriptDone.class::isInstance).count());
     }
 
 
@@ -77,7 +99,7 @@ class QwenAsrClientTest {
                 "{}", "{\"sampleRate\":16000}", "secret");
 
         AsrSession session = client.open(model, event -> { });
-        byte[] halfLimit = new byte[128 * 1024];
+        byte[] halfLimit = new byte[15 * 16000 * 2];
 
         session.appendAudio(ByteBuffer.wrap(halfLimit));
         session.appendAudio(ByteBuffer.wrap(halfLimit));
@@ -85,6 +107,30 @@ class QwenAsrClientTest {
         assertThrows(IllegalStateException.class,
                 () -> session.appendAudio(ByteBuffer.wrap(new byte[]{1})));
         assertTrue(connector.webSocket.binary.isEmpty());
+    }
+
+    @Test void pendingConnectionDoesNotBlockAudioCaptureAndCancelAbortsLateSocket() {
+        var pending = new CompletableFuture<WebSocket>();
+        var model = new ResolvedModel(1,2,3,"QWEN","ASR","asr","wss://example.test","{}","{}","test");
+        var events = new ArrayList<ProviderEvent>();
+        var client = new QwenAsrClient((uri, headers, listener) -> pending);
+        AsrSession session = assertTimeoutPreemptively(java.time.Duration.ofSeconds(1), () -> client.open(model, events::add));
+        session.speechStarted(); session.appendAudio(ByteBuffer.wrap(new byte[640])); session.speechStopped();
+        session.cancel();
+        var socket = new FakeWebSocket(); pending.complete(socket);
+        assertTrue(socket.isOutputClosed()); assertTrue(events.isEmpty());
+    }
+
+    @Test void connectionTimeoutIsClassifiedWithoutLeakingUpstreamDetails() {
+        var pending = new CompletableFuture<WebSocket>();
+        var events = new ArrayList<ProviderEvent>();
+        var client = new QwenAsrClient((uri, headers, listener) -> pending);
+        var model = new ResolvedModel(1,2,3,"QWEN","ASR","asr","wss://example.test","{}","{}","test");
+        client.open(model, events::add);
+        pending.completeExceptionally(new java.net.http.HttpConnectTimeoutException("upstream details must not leak"));
+        var error = (ProviderEvent.ProviderError) events.get(0);
+        assertEquals("asr_connect_timeout", error.code());
+        assertFalse(error.message().contains("upstream details"));
     }
 
     private static final class FakeConnector implements QwenAsrClient.WebSocketConnector {

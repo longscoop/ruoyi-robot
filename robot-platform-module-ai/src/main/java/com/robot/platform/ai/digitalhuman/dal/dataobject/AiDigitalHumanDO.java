@@ -2,6 +2,8 @@ package com.robot.platform.ai.digitalhuman.dal.dataobject;
 
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.FieldStrategy;
 import com.robot.platform.framework.mybatis.core.dataobject.BaseDO;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -23,7 +25,9 @@ public class AiDigitalHumanDO extends BaseDO {
     private String avatarUrl;
     private String avatarResourceUrl;
     private String coverUrl;
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private Long voiceModelId;
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private String voiceId;
     private BigDecimal speechRate;
     private BigDecimal pitch;

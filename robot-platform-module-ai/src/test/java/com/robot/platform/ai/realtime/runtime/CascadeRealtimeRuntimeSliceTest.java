@@ -67,7 +67,8 @@ class CascadeRealtimeRuntimeSliceTest {
 
         asr.emit(new ProviderEvent.TranscriptDone("你好"));
         assertEquals(1, chat.requests.size());
-        assertEquals("system prompt", chat.requests.get(0).messages().get(0).content());
+        assertTrue(chat.requests.get(0).messages().get(0).content().startsWith("system prompt"));
+        assertTrue(chat.requests.get(0).messages().get(0).content().contains("voice_interaction_rules"));
         assertEquals("你好", chat.requests.get(0).messages().get(1).content());
 
         chat.emit(new ProviderEvent.TextDelta("我在。"));
@@ -83,6 +84,46 @@ class CascadeRealtimeRuntimeSliceTest {
         assertTrue(output.events.stream().anyMatch(RealtimeServerEvent.AssistantAudioDoneEvent.class::isInstance));
         assertTrue(output.events.stream().anyMatch(RealtimeServerEvent.AssistantDoneEvent.class::isInstance));
         assertEquals(RealtimeAgentRuntime.State.READY, runtime.state());
+    }
+
+    @Test void synthesisFailureKeepsSessionReadyAndNextQuestionWorks() {
+        var bindingService = mock(AiAgentRobotBindingService.class);
+        var agentService = mock(AiAgentService.class);
+        var modelResolver = mock(ResolvedModelResolver.class);
+        var asr = new FakeAsrClient(); var chat = new FakeChatClient(); var tts = new FakeTtsClient();
+        var output = new CapturingOutput();
+        when(bindingService.requireAgentForRobot(11L, 33L, "xiaoyou")).thenReturn(agentRow());
+        when(agentService.getResolvedConfig(11L, 101L)).thenReturn(agentConfig());
+        when(modelResolver.resolve(11L, 301L)).thenReturn(chatModel());
+        when(modelResolver.resolve(11L, 303L)).thenReturn(asrModel());
+        when(modelResolver.resolve(11L, 304L)).thenReturn(ttsModel());
+        var runtime = new RealtimeAgentRuntime("recovery", deviceSession(), bindingService, agentService,
+                new RealtimeModelRouter(), modelResolver,
+                new ModelClientRegistry(List.of(), List.of(chat), List.of(asr), List.of(tts)));
+        runtime.attachOutput(output);
+        var codec = new RealtimeProtocolCodec();
+        runtime.acceptControl(codec.decodeClientText("""
+                {"type":"session.start","agentCode":"xiaoyou","audio":{"codec":"PCM_S16LE","sampleRate":16000,"channels":1}}
+                """));
+        for (int i = 0; i < 2; i++) {
+            runtime.acceptControl(codec.decodeClientText("{\"type\":\"input.speech_started\"}"));
+            runtime.acceptControl(codec.decodeClientText("{\"type\":\"input.speech_stopped\"}"));
+            asr.emit(new ProviderEvent.TranscriptDone("你好"));
+            chat.emit(new ProviderEvent.TextDelta("你好。")); chat.emit(new ProviderEvent.TextDone("你好。"));
+            if (i == 0) {
+                tts.emit(0, new ProviderEvent.ProviderError("tts_connect_failed", "failed", true));
+                tts.emit(0, new ProviderEvent.AudioDelta(ByteBuffer.wrap(new byte[]{9})));
+                assertTrue(output.binary.isEmpty());
+            } else {
+                tts.emit(1, new ProviderEvent.AudioDelta(ByteBuffer.wrap(new byte[]{1})));
+                tts.emit(1, new ProviderEvent.AudioDone());
+            }
+            assertEquals(RealtimeAgentRuntime.State.READY, runtime.state());
+        }
+        assertEquals(1, output.events.stream().filter(RealtimeServerEvent.AssistantFailedEvent.class::isInstance).count());
+        assertFalse(output.events.stream().anyMatch(RealtimeServerEvent.SessionErrorEvent.class::isInstance));
+        assertEquals(1, output.binary.size());
+        runtime.close(new RealtimeAgentRuntime.CloseReason(1000, "TEST_DONE"));
     }
 
     private static AiAgentDO agentRow() {

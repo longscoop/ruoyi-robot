@@ -44,6 +44,13 @@ public class RealtimeProtocolCodec {
         String type = requireText(root, "type");
         return switch (type) {
             case "session.start" -> decodeSessionStart(root);
+            case "digital_human.offer" -> {
+                rejectUnknownFields(root, Set.of("type", "sdp"), "digital_human.offer");
+                String sdp = requireText(root, "sdp");
+                if (!sdp.startsWith("v=0") || sdp.length() > 65536)
+                    throw new IllegalArgumentException("Invalid digital human offer SDP");
+                yield new RealtimeClientEvent.DigitalHumanOfferEvent(sdp);
+            }
             case "input.speech_started" ->
                     new RealtimeClientEvent.SpeechStartedEvent(optionalText(root, "eventId"));
             case "input.speech_stopped" ->
@@ -134,9 +141,16 @@ public class RealtimeProtocolCodec {
     }
 
     private static void writePayload(ObjectNode root, RealtimeServerEvent event) {
-        if (event instanceof RealtimeServerEvent.SessionCreatedEvent value) {
+        if (event instanceof RealtimeServerEvent.DigitalHumanAnswerEvent value) {
+            putIfNotNull(root, "sdp", value.sdp());
+        } else if (event instanceof RealtimeServerEvent.DigitalHumanErrorEvent value) {
+            putIfNotNull(root, "message", value.message());
+        } else if (event instanceof RealtimeServerEvent.SessionCreatedEvent value) {
             putIfNotNull(root, "mode", value.mode());
         } else if (event instanceof RealtimeServerEvent.SessionErrorEvent value) {
+            putIfNotNull(root, "code", value.code());
+            putIfNotNull(root, "message", value.message());
+        } else if (event instanceof RealtimeServerEvent.AssistantFailedEvent value) {
             putIfNotNull(root, "code", value.code());
             putIfNotNull(root, "message", value.message());
         } else if (event instanceof RealtimeServerEvent.InputTranscriptDeltaEvent value) {

@@ -251,6 +251,9 @@ robot-platform:
 
 robot:
   ai:
+    model-network:
+      # Local model traffic must not inherit an unrelated desktop proxy by accident.
+      proxy-mode: ${ROBOT_AI_MODEL_PROXY_MODE:DIRECT}
     secret-key-base64: ${ROBOT_AI_SECRET_KEY_BASE64:}
   dashboard:
     # The operational day matches MySQL's local timestamp grouping for the local deployment.

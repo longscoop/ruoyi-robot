@@ -220,3 +220,21 @@ robot-platform:
     end-code: 9999 # 这里配置 9999 的原因是，测试方便。
 
 debug: false
+
+# Digital-human rendering and AI model transport.
+
+robot:
+  ai:
+    model-network:
+      proxy-mode: ${ROBOT_AI_MODEL_PROXY_MODE:SYSTEM}
+    digital-human:
+      # Multiple instances may run different LiveTalking models; URLs/tokens remain server-side.
+      services:
+        default:
+          enabled: ${ROBOT_LIVETALKING_ENABLED:false}
+          provider: LIVETALKING
+          name: LiveTalking
+          url: ${ROBOT_LIVETALKING_URL:http://127.0.0.1:8010}
+          token: ${ROBOT_LIVETALKING_TOKEN:}
+          timeout-seconds: 30
+      ice-servers: []

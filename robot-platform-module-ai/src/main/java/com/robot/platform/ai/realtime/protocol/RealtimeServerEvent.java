@@ -6,6 +6,14 @@ public sealed interface RealtimeServerEvent {
 
     String sessionId();
 
+    record DigitalHumanAnswerEvent(String sessionId, String sdp) implements RealtimeServerEvent {
+        @Override public String type() { return "digital_human.answer"; }
+    }
+
+    record DigitalHumanErrorEvent(String sessionId, String message) implements RealtimeServerEvent {
+        @Override public String type() { return "digital_human.error"; }
+    }
+
     default String turnId() {
         return null;
     }
@@ -88,6 +96,11 @@ public sealed interface RealtimeServerEvent {
         public String type() {
             return "assistant.done";
         }
+    }
+
+    record AssistantFailedEvent(String sessionId, String turnId, String code, String message)
+            implements RealtimeServerEvent {
+        @Override public String type() { return "assistant.failed"; }
     }
 
     record PlaybackStopEvent(String sessionId, String turnId, String reason)

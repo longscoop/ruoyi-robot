@@ -34,6 +34,12 @@ public interface RealtimeVoiceClient {
         };
     }
 
+    /** Providers may prepare turn-specific instructions after ASR, before inference. */
+    default RealtimeProviderSession openTurnAware(ResolvedModel model, RealtimeTurnListener listener,
+                                                  java.util.function.Function<String, String> instructions) {
+        return openTurnAware(model, listener);
+    }
+
     final class TurnAwareBridge {
         private final RealtimeTurnListener listener;
         private volatile String turnId;
