@@ -12,6 +12,21 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 class MemoryContextBuilderTest {
+    @Test void fallbackPathAlsoGatesAndRewrites() {
+        MemoryRetriever retriever = mock(MemoryRetriever.class);
+        MemoryContextBuilder builder = new MemoryContextBuilder(retriever, 3);
+        var identity = ConversationIdentity.anonymous(1, 2);
+        for (String text : List.of("你好", "什么是机器人", "忘记我的猫", "它叫什么")) {
+            assertEquals("", builder.buildContext(identity, agent(true), text));
+        }
+        verifyNoInteractions(retriever);
+        when(retriever.retrieve(any(), eq(3))).thenReturn(List.of(
+                new MemorySnippet(1,"ROBOT","RELATION","用户的猫叫小黑",null,.9)));
+        assertTrue(builder.buildContext(identity, agent(true), "它叫什么", "我家的猫").contains("小黑"));
+        verify(retriever).retrieve(argThat(q -> q.text().equals("我家的猫；它叫什么")
+                && q.tenantId() == 1 && q.robotId() == 2 && q.memberId() == null), eq(3));
+    }
+
     @Test void disabledMemoryReturnsEmptyWithoutQuery() {
         MemoryRetriever retriever = mock(MemoryRetriever.class);
         MemoryContextBuilder builder = new MemoryContextBuilder(retriever, 8);
@@ -53,7 +68,7 @@ class MemoryContextBuilderTest {
                 new MemorySnippet(2,"ROBOT","WORK","用户开发机器人",null,1),
                 new MemorySnippet(3,"ROBOT","PREFERENCE","用户希望回答简短",null,1)));
         String text=new MemoryContextBuilder(retriever,8).buildBackgroundContext(
-                ConversationIdentity.anonymous(11,33),agent(true));
+                ConversationIdentity.anonymous(1,33),agent(true));
         assertFalse(text.contains("小黑"));assertFalse(text.contains("开发机器人"));assertTrue(text.contains("回答简短"));
     }
 

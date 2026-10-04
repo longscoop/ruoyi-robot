@@ -274,6 +274,8 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
         flushMemoryTurns();
         closeReason = reason == null ? new CloseReason(1011, "UNKNOWN") : reason;
         state = State.CLOSED;
+        previousMemoryUserText = null;
+        communicationContext = "";
         if (renderStream != null) { renderStream.close(); renderStream = null; }
         try {
             if (providerSession != null) providerSession.close();
@@ -409,8 +411,7 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
                 && JsonUtils.parseTree(agentConfig.voiceConfigJson()).path("input_audio_transcription").isObject()
                 && resolvedModel.modelConfigJson() != null
                 && JsonUtils.parseTree(resolvedModel.modelConfigJson()).path("per_turn_instructions").asBoolean(false);
-        String memoryContext = turnMemory ? buildMemoryContext("") : withTrustedTenant(() ->
-                memoryContextBuilder == null ? "" : memoryContextBuilder.buildBackgroundContext(conversationIdentity, agentConfig));
+        String memoryContext = loadCommunicationContext();
         resolvedModel = resolvedModel.withRealtimeSession(mergeSystemContext(agentConfig.systemPrompt(), memoryContext),
                 digitalHumanVoiceConfig(agentConfig.voiceConfigJson()));
         RealtimeVoiceClient client = clientRegistry.requireRealtimeVoice(resolvedModel.providerType());
@@ -420,6 +421,7 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
     }
 
     private void openCascadeProvider() {
+        loadCommunicationContext();
         Long asrModelId = route.asrModelId();
         Long conversationModelId = route.conversationModelId();
         Long ttsModelId = digitalHuman != null && digitalHuman.getVoiceModelId() != null
@@ -641,9 +643,25 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
             emitEvent(new RealtimeServerEvent.DigitalHumanErrorEvent(sessionId, message));
     }
 
+    private volatile String previousMemoryUserText;
+    private volatile String communicationContext = "";
+
+    private String loadCommunicationContext() {
+        communicationContext = withTrustedTenant(() -> memoryContextBuilder == null || conversationIdentity == null
+                || agentConfig == null ? "" : memoryContextBuilder.buildBackgroundContext(conversationIdentity, agentConfig));
+        return communicationContext;
+    }
+
     private String buildMemoryContext(String userText) {
         if (memoryContextBuilder == null || conversationIdentity == null || agentConfig == null) return "";
-        return memoryContextBuilder.buildContext(conversationIdentity, agentConfig, userText);
+        if (new com.robot.platform.ai.memory.policy.MemoryDirectiveParser().parse(userText)
+                == com.robot.platform.ai.memory.policy.MemoryDirectiveParser.Directive.FORGET) {
+            communicationContext = "";
+            previousMemoryUserText = null;
+            return "";
+        }
+        String recalled = memoryContextBuilder.buildContext(conversationIdentity, agentConfig, userText, previousMemoryUserText);
+        return recalled.isBlank() ? communicationContext : recalled;
     }
 
     private static String mergeSystemContext(String prompt, String memory) {
@@ -667,6 +685,11 @@ public class RealtimeAgentRuntime implements AiRealtimeWebSocketHandler.Runtime 
     }
 
     private void submitFinalizedTurn() {
+        if (responseComplete && finalizedUserText != null && finalizedAssistantText != null) {
+            var directive = new com.robot.platform.ai.memory.policy.MemoryDirectiveParser().parse(finalizedUserText);
+            previousMemoryUserText = directive == com.robot.platform.ai.memory.policy.MemoryDirectiveParser.Directive.NORMAL
+                    && finalizedUserText.length() <= 256 ? finalizedUserText : null;
+        }
         if (memorySubmitted || !responseComplete || memoryPipeline == null || conversationIdentity == null
                 || agentConfig == null || !agentConfig.memoryWriteEnabled()
                 || !com.robot.platform.ai.memory.provider.MemoryModes.persistent(agentConfig.memoryMode())

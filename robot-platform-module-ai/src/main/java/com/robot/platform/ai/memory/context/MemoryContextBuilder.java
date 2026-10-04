@@ -3,6 +3,7 @@ package com.robot.platform.ai.memory.context;
 import com.robot.platform.ai.agent.service.AiAgentConfig;
 import com.robot.platform.ai.memory.identity.ConversationIdentity;
 import com.robot.platform.ai.memory.service.MemoryQuery;
+import com.robot.platform.ai.memory.policy.MemoryRecallPlanner;
 import com.robot.platform.ai.memory.service.MemoryRetriever;
 import com.robot.platform.ai.memory.service.MemorySnippet;
 import org.springframework.beans.factory.annotation.Value;
@@ -38,24 +39,34 @@ public class MemoryContextBuilder {
     }
 
     public String buildContext(ConversationIdentity identity, AiAgentConfig agent, String currentUserText) {
-        return buildContext(identity, agent, currentUserText, false);
+        return buildContext(identity, agent, currentUserText, null);
+    }
+
+    public String buildContext(ConversationIdentity identity, AiAgentConfig agent, String currentUserText,
+                               String previousUserText) {
+        return buildContext(identity, agent, currentUserText, previousUserText, false);
     }
 
     public String buildBackgroundContext(ConversationIdentity identity, AiAgentConfig agent) {
-        return buildContext(identity, agent, "", true);
+        return buildContext(identity, agent, "", null, true);
     }
 
-    private String buildContext(ConversationIdentity identity, AiAgentConfig agent, String currentUserText, boolean background) {
+    private String buildContext(ConversationIdentity identity, AiAgentConfig agent, String currentUserText, String previousUserText, boolean background) {
         Objects.requireNonNull(identity, "identity");
         Objects.requireNonNull(agent, "agent");
         if (!agent.memoryReadEnabled() || !com.robot.platform.ai.memory.provider.MemoryModes.persistent(agent.memoryMode())) return "";
+        com.robot.platform.ai.memory.provider.MemoryNamespace.of(identity, agent);
+        MemoryRecallPlanner.Plan plan = background ? new MemoryRecallPlanner.Plan(true, "", "communication_background")
+                : MemoryRecallPlanner.plan(currentUserText, previousUserText);
+        if (!plan.retrieve()) return "";
         Long memberId = identity.memberMemoryAllowed() ? identity.memberId() : null;
-        MemoryQuery query = new MemoryQuery(identity.tenantId(), identity.robotId(), memberId, currentUserText, null, LocalDateTime.now());
+        MemoryQuery query = new MemoryQuery(identity.tenantId(), identity.robotId(), memberId, plan.query(), null, LocalDateTime.now());
         List<MemorySnippet> memories = providers != null
-                ? providers.queryMemory(identity, agent, background ? "" : currentUserText, topK)
+                ? (background ? providers.queryBackground(identity, agent, topK)
+                    : providers.queryMemory(identity, agent, currentUserText, topK, previousUserText))
                 : background ? retriever.retrieveBackground(query, topK) : retriever.retrieve(query, topK);
         if (providers == null) memories = com.robot.platform.ai.memory.service.MemorySelection.select(
-                currentUserText, memories, topK, false);
+                plan.query(), memories, topK, false);
         if (background) memories = memories.stream()
                 .filter(m -> com.robot.platform.ai.memory.service.MemoryCategories.communicationPreference(m.memoryType(), m.content()))
                 .toList();
