@@ -3,7 +3,7 @@ package com.robot.platform.ai.memory.provider;
 import com.robot.platform.ai.agent.service.AiAgentConfig;
 import com.robot.platform.ai.memory.extract.MemoryExtractor.CompletedTurn;
 import com.robot.platform.ai.memory.identity.ConversationIdentity;
-import com.robot.platform.ai.memory.policy.MemoryDirectiveParser;
+import com.robot.platform.ai.memory.policy.MemoryRecallPlanner;
 import com.robot.platform.ai.memory.service.MemorySelection;
 import com.robot.platform.ai.memory.service.MemorySnippet;
 import com.robot.platform.framework.tenant.core.context.TenantContextHolder;
@@ -33,9 +33,23 @@ public class MemoryProviderRegistry implements DisposableBean {
         return result;
     }
     public List<MemorySnippet> queryMemory(ConversationIdentity i, AiAgentConfig a, String q, int limit) {
+        return queryMemory(i, a, q, limit, null);
+    }
+    public List<MemorySnippet> queryMemory(ConversationIdentity i, AiAgentConfig a, String q, int limit,
+                                          String previousUserText) {
+        return recall(i, a, MemoryRecallPlanner.plan(q, previousUserText), limit);
+    }
+    public List<MemorySnippet> queryBackground(ConversationIdentity i, AiAgentConfig a, int limit) {
+        return recall(i, a, new MemoryRecallPlanner.Plan(true, "", "communication_background"), limit).stream()
+                .filter(m -> com.robot.platform.ai.memory.service.MemoryCategories.communicationPreference(m.memoryType(), m.content()))
+                .toList();
+    }
+    private List<MemorySnippet> recall(ConversationIdentity i, AiAgentConfig a, MemoryRecallPlanner.Plan plan, int limit) {
         MemoryNamespace.of(i,a);
         if (!a.memoryReadEnabled() || !MemoryModes.persistent(a.memoryMode())) return List.of();
-        if (new MemoryDirectiveParser().parse(q) == MemoryDirectiveParser.Directive.FORGET) return List.of();
+        LoggerFactory.getLogger(getClass()).debug("Memory gate: retrieve={} reason={}", plan.retrieve(), plan.reason());
+        if (!plan.retrieve()) return List.of();
+        String q = plan.query();
         MemoryProvider provider = require(a.memoryMode());
         Future<List<MemorySnippet>> task = null;
         long started = System.nanoTime();
