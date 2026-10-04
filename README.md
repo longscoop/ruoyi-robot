@@ -8,6 +8,8 @@
 
 平台支持机器人设备接入、MQTT 通信、在线状态、任务下发、机器人绑定、多租户运营，并提供大模型、Prompt、Agent、知识库、Realtime Agent、长期记忆和数字人等 AI 能力。
 
+其中知识库目前提供管理基础，完整 RAG 尚在建设中；长期记忆与 LiveTalking / WebRTC 已有代码实现，实机与生产验证范围见下方能力状态。
+
 ✨ 为什么做 RuoYi Robot
 
 开发一款真正可运营的机器人产品，除了 ROS、导航、视觉、语音等机器人端能力，还需要大量云端基础设施：
@@ -46,6 +48,22 @@ RuoYi Robot 根据调用方划分三套 API 安全边界：
 三种 API 使用不同身份认证和授权边界，Token 不可互换。
 
 # 🚀 核心能力
+
+## 能力状态
+
+以下状态依据仓库现有代码、配置和测试区分：**代码已实现**表示已有对应实现；**待实机/生产验证**表示真实部署效果仍需确认；**建设中**表示已有部分基础但完整链路尚未完成；**计划**表示尚未提供对应完整实现。代码实现与部署验证是两个维度，自动化回归不等于生产验证。
+
+| 能力 | 状态 | 当前范围与验证边界 |
+| --- | --- | --- |
+| 长期记忆 / 对话记忆 | 代码已实现 | 已有 MySQL 长期记忆、本地摘要、Mem0、PowerMem 和关闭模式；包含召回筛选、上下文注入及相关回归测试。远程服务适配测试不代表目标环境的真实服务联调或生产验证完成。 |
+| Realtime Voice Agent | 代码已实现 | 已有 NATIVE、CASCADE、AUTO 路由，以及 ASR → LLM → TTS 级联实现和相关回归测试；实际设备、麦克风与播放效果需在部署环境确认。 |
+| STATIC_2D 数字人 | 代码已实现 | 已有内置形象、状态动作和音量驱动的口型表现；不代表逐音素口型同步。 |
+| LiveTalking / WebRTC 数字人 | 代码已实现；待实机/生产验证 | 已有服务实例与形象选择、SDP 协商、回答音频转发、打断及浏览器连接管理；真实 GPU 推理、模型素材、口型同步和跨网段 WebRTC 仍待部署验证。 |
+| 知识库管理 | 代码已实现 | 已有知识库、纯文本知识文档管理及 Agent 关联，不等于完整 RAG。 |
+| 完整 RAG | 建设中 | 基于已有知识库管理，文件上传解析、分块、Embedding、向量数据库与语义检索链路尚未完成。 |
+| Live2D、3D Avatar、第三方 Renderer 扩展 | 计划 | 已预留统一 Renderer 接口，不表示这些渲染后端已经实现。 |
+
+实现与回归依据：[记忆 Provider](robot-platform-module-ai/src/main/java/com/robot/platform/ai/memory/provider/)、[记忆测试](robot-platform-module-ai/src/test/java/com/robot/platform/ai/memory/)、[实时语音运行时](robot-platform-module-ai/src/main/java/com/robot/platform/ai/realtime/runtime/)、[实时语音测试](robot-platform-module-ai/src/test/java/com/robot/platform/ai/realtime/runtime/)、[知识库服务](robot-platform-module-ai/src/main/java/com/robot/platform/ai/knowledge/service/AiKnowledgeService.java)。LiveTalking 的验证边界见下方数字人说明。
 
 ## 🤖 机器人运营
 
@@ -242,17 +260,19 @@ STATIC_2D
 LIVETALKING（WebRTC 实时音视频）
 ```
 
-LiveTalking 支持选择服务实例和形象，实时回答音频驱动口型，支持打断。可通过不同实例切换 Wav2Lip、MuseTalk 等模型。管理端可连接视频并试听；服务端通过 `ROBOT_LIVETALKING_ENABLED`、`ROBOT_LIVETALKING_BASE_URL` 和 `ROBOT_LIVETALKING_TOKEN` 配置服务，管理端选择对应服务实例和形象 ID。旧配置默认使用静态形象，无需数据库迁移。
+LiveTalking 接入代码已实现服务实例和形象选择、WebRTC SDP 协商、实时回答音频转发及打断。可配置不同的外部实例接入 Wav2Lip、MuseTalk 等模型，实际可用性取决于对应服务与模型素材的部署。管理端已提供视频连接和试听入口；服务端通过 `ROBOT_LIVETALKING_ENABLED`、`ROBOT_LIVETALKING_URL` 和 `ROBOT_LIVETALKING_TOKEN` 配置服务，管理端选择对应服务实例和形象 ID。旧配置默认使用静态形象，无需数据库迁移。
 
-并预留：
+> **待实机/生产验证：**现有自动化测试使用本地模拟 HTTP 服务和模拟浏览器 PeerConnection，覆盖协议、音频转发、打断与资源释放，不覆盖真实 GPU 推理、模型素材、口型同步或跨网段 WebRTC。上述项目仍需实际部署验证，不能将“代码已支持”理解为“生产实机已验证”。
+
+验证依据：[后端 Provider 测试](robot-platform-module-ai/src/test/java/com/robot/platform/ai/digitalhuman/provider/DigitalHumanProviderTest.java)、[前端 Renderer 测试](robot-platform-ui-admin/src/views/ai/digital-human/runtime/LiveTalkingRenderer.spec.ts)、[服务配置](robot-platform-server/src/main/resources/application.yaml)，以及 [490f508 中的实现与验证记录](https://github.com/longscoop/ruoyi-robot/blob/490f508ccc54c0c284b3d1a77dee57223a04d07e/docs/digital-human-livetalking.md)（历史文档，当前主干已移除）。
+
+计划扩展以下渲染后端，目前仅预留统一 Renderer 接口：
 
 ```
 Live2D
 3D Avatar
 Third-party Renderer
 ```
-
-统一 Renderer 接口。
 
 整体链路：
 
@@ -592,7 +612,13 @@ Result
 
 RuoYi Robot 将继续围绕 **Robot Cloud + Robot Agent** 演进。
 
-计划包括：
+**建设中：**完整 RAG。在已有知识库与纯文本知识文档管理基础上，补齐文件上传解析、分块、Embedding、Vector Database 和语义检索。
+
+**待实机/生产验证：**LiveTalking 的真实 GPU 推理、模型素材、口型同步和跨网段 WebRTC，以及真实设备上的音视频交互效果。
+
+长期记忆、Realtime Voice Agent 和 LiveTalking / WebRTC 的现有实现已列入上方能力状态，不再作为尚未实现的计划重复列出。
+
+**计划：**
 
 - Robot Python SDK
 - ROS1 SDK / Bridge
@@ -605,13 +631,9 @@ RuoYi Robot 将继续围绕 **Robot Cloud + Robot Agent** 演进。
 - Robot Skill / Capability
 - Agent Tool Calling
 - Robot Workflow
-- 完整 RAG
-- Vector Database
-- Long-term Memory
-- Realtime Voice Agent
 - Live2D Digital Human
 - 3D Digital Human
-- WebRTC Video
+- Third-party Renderer 扩展
 - APP / H5 Robot Console
 
 最终希望形成：
@@ -626,6 +648,6 @@ RuoYi Robot 将继续围绕 **Robot Cloud + Robot Agent** 演进。
       Robot Developer Platform
 ```
 
-对话记忆支持本地摘要、Mem0、PowerMem 和关闭模式，可在智能体配置中切换。服务端配置位于 `application.yaml` 的 `robot.ai.memory`，远程服务凭据通过环境变量提供；PowerMem 适配服务启动说明见 [README](script/powermem-service/README.md)。
+对话记忆代码已实现 MySQL 长期记忆（`LONG_TERM`）、本地摘要（`MEM_LOCAL_SHORT`）、Mem0（`MEM0AI`）、PowerMem（`POWERMEM`）和关闭模式，可在智能体配置中切换。服务端配置位于 `application.yaml` 的 `robot.ai.memory`，远程服务凭据通过环境变量提供；PowerMem 适配服务启动说明见 [README](script/powermem-service/README.md)。具体服务在目标环境的可用性仍需联调确认。
 
 已有数据库升级时，执行 `sql/mysql/ai-admin-display-20261001.sql` 更新角色修改权限及对话菜单；新环境使用 `sql/mysql/robot-platform.sql` 初始化。
